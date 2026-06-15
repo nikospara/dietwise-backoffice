@@ -1,0 +1,23 @@
+{
+	printWidth: 120,
+	semi: true,
+	singleQuote: true,
+	quoteProps: 'as-needed',
+	trailingComma: 'all',
+	bracketSpacing: true,
+	bracketSameLine: false,
+	arrowParens: 'always',
+	endOfLine: 'lf',
+	tailwindConfig: './tailwind.config.js',
+	tailwindAttributes: ['wrapperClassName', 'wrapClassName', 'rootClassName'],
+	tailwindFunctions: ['classNames', 'classnames', 'twMerge'],
+	overrides: [
+		{
+			files: '.prettierrc',
+			options: {
+				parser: 'json',
+			},
+		},
+	],
+	plugins: ['prettier-plugin-tailwindcss'],
+}

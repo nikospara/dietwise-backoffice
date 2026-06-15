@@ -1,0 +1,13 @@
+import type { ComponentType } from 'react';
+import { FiHome } from 'react-icons/fi';
+
+export interface NavItem {
+	to: string;
+	labelKey: string;
+	icon: ComponentType<{ className?: string }>;
+	/** Match the route exactly (used for the index route). */
+	end?: boolean;
+}
+
+// Entity CRUD routes get appended here as the backoffice grows.
+export const navItems: NavItem[] = [{ to: '/', labelKey: 'nav.home', icon: FiHome, end: true }];

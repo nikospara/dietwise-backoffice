@@ -1,0 +1,23 @@
+{
+	"app": {
+		"title": "DietWise Backoffice"
+	},
+	"nav": {
+		"home": "Home"
+	},
+	"auth": {
+		"signingIn": "Signing in…",
+		"signInError": "Sign-in failed",
+		"logout": "Log out",
+		"missingRole": "Your account does not have the 'backoffice' role. Some actions may be denied by the server."
+	},
+	"home": {
+		"welcome": "Welcome, {{name}}",
+		"signedInAs": "Signed in as",
+		"realmRoles": "Realm roles"
+	},
+	"notFound": {
+		"title": "Page not found",
+		"backHome": "Back to home"
+	}
+}
