@@ -25,6 +25,8 @@
 		"rationaleEditLabel": "Edit rationale",
 		"pendingBadge": "Pending",
 		"revert": "Revert",
+		"deactivate": "Deactivate",
+		"activate": "Activate",
 		"staleReload": "Someone changed this rule since you loaded it. The grid was refreshed — please redo your edit."
 	},
 	"home": {

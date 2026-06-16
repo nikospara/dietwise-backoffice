@@ -9,6 +9,8 @@ export interface Rule {
 	triggerIngredient: string;
 	roleOrTechnique: string | null;
 	rationale: string | null;
+	/** Effective active state (published master overlaid by any Staged Change); deactivated Rules are skipped by recipe assessment. */
+	active: boolean;
 	/** How this Rule differs from published master because of a Staged Change. */
 	changeState: RuleChangeState;
 	/** Working Copy version to base the next edit on. */
@@ -41,4 +43,16 @@ export function stageRationale(id: string, rationale: string | null, baseVersion
  */
 export function revertRationale(id: string, baseVersion: number): Promise<void> {
 	return apiFetch<void>(`/rules/${id}/rationale?baseVersion=${baseVersion}`, { method: 'DELETE' });
+}
+
+/**
+ * Stages a Rule's active state in the Working Copy, leaving published master untouched. Deactivating an applied Rule,
+ * or activating a deactivated one, is a Staged Change. Rejects with {@link ApiError} status 409 when the base version
+ * is stale.
+ */
+export function setActive(id: string, active: boolean, baseVersion: number): Promise<void> {
+	return apiFetch<void>(`/rules/${id}/active`, {
+		method: 'PUT',
+		body: JSON.stringify({ active, baseVersion }),
+	});
 }

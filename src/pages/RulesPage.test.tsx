@@ -1,15 +1,21 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/client';
-import { fetchRules, revertRationale, stageRationale } from '@/api/rules';
+import { fetchRules, revertRationale, setActive, stageRationale } from '@/api/rules';
 import { RulesPage } from './RulesPage';
 
-vi.mock('@/api/rules', () => ({ fetchRules: vi.fn(), stageRationale: vi.fn(), revertRationale: vi.fn() }));
+vi.mock('@/api/rules', () => ({
+	fetchRules: vi.fn(),
+	stageRationale: vi.fn(),
+	revertRationale: vi.fn(),
+	setActive: vi.fn(),
+}));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
 const fetchRulesMock = vi.mocked(fetchRules);
 const stageRationaleMock = vi.mocked(stageRationale);
 const revertRationaleMock = vi.mocked(revertRationale);
+const setActiveMock = vi.mocked(setActive);
 
 const UNCHANGED_RULE = {
 	id: '1',
@@ -17,6 +23,7 @@ const UNCHANGED_RULE = {
 	triggerIngredient: 'Beef',
 	roleOrTechnique: 'minced in sauce',
 	rationale: 'Use plant proteins.',
+	active: true,
 	changeState: 'UNCHANGED' as const,
 	version: 0,
 };
@@ -27,17 +34,20 @@ const ROLELESS_RULE = {
 	triggerIngredient: 'Beef',
 	roleOrTechnique: null,
 	rationale: null,
+	active: true,
 	changeState: 'UNCHANGED' as const,
 	version: 0,
 };
 
 const CHANGED_RULE = { ...UNCHANGED_RULE, changeState: 'CHANGED' as const, version: 3 };
+const DEACTIVATED_RULE = { ...UNCHANGED_RULE, active: false, changeState: 'CHANGED' as const, version: 3 };
 
 describe('RulesPage', () => {
 	beforeEach(() => {
 		fetchRulesMock.mockReset();
 		stageRationaleMock.mockReset();
 		revertRationaleMock.mockReset();
+		setActiveMock.mockReset();
 	});
 
 	it('renders one row per rule, blanks a missing role, and makes the rationale editable', async () => {
@@ -139,6 +149,52 @@ describe('RulesPage', () => {
 		render(<RulesPage />);
 
 		fireEvent.click(await screen.findByText('rules.revert'));
+
+		expect(await screen.findByText('rules.staleReload')).not.toBeNull();
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('deactivates an active rule against its base version and refreshes the grid', async () => {
+		fetchRulesMock.mockResolvedValueOnce([UNCHANGED_RULE]).mockResolvedValueOnce([DEACTIVATED_RULE]);
+		setActiveMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByText('rules.deactivate'));
+
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+		expect(setActiveMock).toHaveBeenCalledWith('1', false, 0);
+		expect(await screen.findByText('rules.activate')).not.toBeNull();
+	});
+
+	it('activates a deactivated rule against its base version and refreshes the grid', async () => {
+		fetchRulesMock.mockResolvedValueOnce([DEACTIVATED_RULE]).mockResolvedValueOnce([UNCHANGED_RULE]);
+		setActiveMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByText('rules.activate'));
+
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+		expect(setActiveMock).toHaveBeenCalledWith('1', true, 3);
+	});
+
+	it('marks a deactivated rule with a red row', async () => {
+		fetchRulesMock.mockResolvedValue([DEACTIVATED_RULE]);
+
+		render(<RulesPage />);
+
+		const row = (await screen.findByText('minced in sauce')).closest('tr');
+		expect(row?.className).toContain('bg-error');
+	});
+
+	it('warns and refreshes the grid when a deactivation is rejected as stale', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		setActiveMock.mockRejectedValue(new ApiError(409, 'conflict'));
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByText('rules.deactivate'));
 
 		expect(await screen.findByText('rules.staleReload')).not.toBeNull();
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));

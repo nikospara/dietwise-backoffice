@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '@/api/client';
-import { fetchRules, revertRationale, stageRationale, type Rule } from '@/api/rules';
+import { fetchRules, revertRationale, setActive, stageRationale, type Rule } from '@/api/rules';
 
 const EMPTY = '—';
 
@@ -68,9 +68,9 @@ export function RulesPage() {
 		}
 	};
 
-	const commitRevert = async (rule: Rule) => {
+	const runAndReload = async (action: () => Promise<unknown>) => {
 		try {
-			await revertRationale(rule.id, rule.version);
+			await action();
 			setConflict(false);
 			reload();
 		} catch (error) {
@@ -82,6 +82,10 @@ export function RulesPage() {
 			}
 		}
 	};
+
+	const commitRevert = (rule: Rule) => runAndReload(() => revertRationale(rule.id, rule.version));
+
+	const commitSetActive = (rule: Rule) => runAndReload(() => setActive(rule.id, !rule.active, rule.version));
 
 	if (failed) {
 		return (
@@ -117,7 +121,7 @@ export function RulesPage() {
 					{rules.map((rule) => {
 						const changed = rule.changeState === 'CHANGED';
 						return (
-							<tr key={rule.id}>
+							<tr key={rule.id} className={rule.active ? '' : 'bg-error/10'}>
 								<td>{rule.recommendation}</td>
 								<td>{rule.triggerIngredient}</td>
 								<td>{rule.roleOrTechnique ?? EMPTY}</td>
@@ -132,9 +136,11 @@ export function RulesPage() {
 									/>
 								</td>
 								<td>
-									{changed ? (
-										<div className="flex items-center gap-2">
+									<div className="flex items-center gap-2">
+										{changed ? (
 											<span className="badge badge-warning">{t('rules.pendingBadge')}</span>
+										) : null}
+										{changed ? (
 											<button
 												type="button"
 												className="btn btn-ghost btn-xs"
@@ -142,8 +148,15 @@ export function RulesPage() {
 											>
 												{t('rules.revert')}
 											</button>
-										</div>
-									) : null}
+										) : null}
+										<button
+											type="button"
+											className="btn btn-ghost btn-xs"
+											onClick={() => commitSetActive(rule)}
+										>
+											{rule.active ? t('rules.deactivate') : t('rules.activate')}
+										</button>
+									</div>
 								</td>
 							</tr>
 						);
