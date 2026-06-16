@@ -34,3 +34,11 @@ export function stageRationale(id: string, rationale: string | null, baseVersion
 		body: JSON.stringify({ rationale, baseVersion }),
 	}).then((response) => response.version);
 }
+
+/**
+ * Reverts a Rule's staged rationale, restoring the published master value and removing the Staged Change.
+ * Rejects with {@link ApiError} status 409 when the base version is stale.
+ */
+export function revertRationale(id: string, baseVersion: number): Promise<void> {
+	return apiFetch<void>(`/rules/${id}/rationale?baseVersion=${baseVersion}`, { method: 'DELETE' });
+}

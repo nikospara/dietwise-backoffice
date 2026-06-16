@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '@/api/client';
-import { fetchRules, stageRationale, type Rule } from '@/api/rules';
+import { fetchRules, revertRationale, stageRationale, type Rule } from '@/api/rules';
 
 const EMPTY = '—';
 
@@ -68,6 +68,21 @@ export function RulesPage() {
 		}
 	};
 
+	const commitRevert = async (rule: Rule) => {
+		try {
+			await revertRationale(rule.id, rule.version);
+			setConflict(false);
+			reload();
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reload();
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
 	if (failed) {
 		return (
 			<div className="alert alert-error">
@@ -118,7 +133,16 @@ export function RulesPage() {
 								</td>
 								<td>
 									{changed ? (
-										<span className="badge badge-warning">{t('rules.pendingBadge')}</span>
+										<div className="flex items-center gap-2">
+											<span className="badge badge-warning">{t('rules.pendingBadge')}</span>
+											<button
+												type="button"
+												className="btn btn-ghost btn-xs"
+												onClick={() => commitRevert(rule)}
+											>
+												{t('rules.revert')}
+											</button>
+										</div>
 									) : null}
 								</td>
 							</tr>

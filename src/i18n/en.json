@@ -24,6 +24,7 @@
 		"columnActions": "Actions",
 		"rationaleEditLabel": "Edit rationale",
 		"pendingBadge": "Pending",
+		"revert": "Revert",
 		"staleReload": "Someone changed this rule since you loaded it. The grid was refreshed — please redo your edit."
 	},
 	"home": {
