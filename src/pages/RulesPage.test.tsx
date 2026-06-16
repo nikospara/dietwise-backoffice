@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/client';
-import { fetchRules, revertRationale, setActive, stageRationale } from '@/api/rules';
+import { createRule, fetchNewRuleOptions, fetchRules, revertRationale, setActive, stageRationale } from '@/api/rules';
 import { RulesPage } from './RulesPage';
 
 vi.mock('@/api/rules', () => ({
@@ -9,6 +9,8 @@ vi.mock('@/api/rules', () => ({
 	stageRationale: vi.fn(),
 	revertRationale: vi.fn(),
 	setActive: vi.fn(),
+	fetchNewRuleOptions: vi.fn(),
+	createRule: vi.fn(),
 }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
@@ -16,6 +18,25 @@ const fetchRulesMock = vi.mocked(fetchRules);
 const stageRationaleMock = vi.mocked(stageRationale);
 const revertRationaleMock = vi.mocked(revertRationale);
 const setActiveMock = vi.mocked(setActive);
+const fetchNewRuleOptionsMock = vi.mocked(fetchNewRuleOptions);
+const createRuleMock = vi.mocked(createRule);
+
+const OPTIONS = {
+	recommendations: [{ id: 'r1', name: 'Decrease sodium' }],
+	triggerIngredients: [{ id: 't1', name: 'Soy sauce' }],
+	rolesOrTechniques: [{ id: 'k1', name: 'seasoning' }],
+};
+
+const NEW_RULE = {
+	id: 'n1',
+	recommendation: 'Decrease sodium',
+	triggerIngredient: 'Soy sauce',
+	roleOrTechnique: 'seasoning',
+	rationale: null,
+	active: true,
+	changeState: 'NEW' as const,
+	version: 1,
+};
 
 const UNCHANGED_RULE = {
 	id: '1',
@@ -48,6 +69,13 @@ describe('RulesPage', () => {
 		stageRationaleMock.mockReset();
 		revertRationaleMock.mockReset();
 		setActiveMock.mockReset();
+		fetchNewRuleOptionsMock.mockReset();
+		createRuleMock.mockReset();
+		fetchNewRuleOptionsMock.mockResolvedValue({
+			recommendations: [],
+			triggerIngredients: [],
+			rolesOrTechniques: [],
+		});
 	});
 
 	it('renders one row per rule, blanks a missing role, and makes the rationale editable', async () => {
@@ -198,5 +226,54 @@ describe('RulesPage', () => {
 
 		expect(await screen.findByText('rules.staleReload')).not.toBeNull();
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('stages a new rule from the chosen business key and refreshes the grid', async () => {
+		fetchNewRuleOptionsMock.mockResolvedValue(OPTIONS);
+		fetchRulesMock.mockResolvedValueOnce([]).mockResolvedValueOnce([NEW_RULE]);
+		createRuleMock.mockResolvedValue('n1');
+
+		render(<RulesPage />);
+
+		await screen.findByRole('option', { name: 'Decrease sodium' });
+		fireEvent.change(screen.getByLabelText('rules.recommendation'), { target: { value: 'r1' } });
+		fireEvent.focus(screen.getByLabelText('rules.triggerIngredient'));
+		fireEvent.mouseDown(screen.getByRole('button', { name: 'Soy sauce' }));
+
+		fireEvent.click(screen.getByText('rules.addRule'));
+
+		await waitFor(() => expect(createRuleMock).toHaveBeenCalledWith('r1', 't1', null));
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('renders a new rule as a green row with a pending badge and no deactivate or revert', async () => {
+		fetchRulesMock.mockResolvedValue([NEW_RULE]);
+
+		render(<RulesPage />);
+
+		const row = (await screen.findByText('seasoning')).closest('tr');
+		expect(row?.className).toContain('bg-success');
+		expect(screen.queryByText('rules.pendingBadge')).not.toBeNull();
+		expect(screen.queryByText('rules.deactivate')).toBeNull();
+		expect(screen.queryByText('rules.activate')).toBeNull();
+		expect(screen.queryByText('rules.revert')).toBeNull();
+	});
+
+	it('blocks adding a rule whose business key already exists', async () => {
+		fetchNewRuleOptionsMock.mockResolvedValue(OPTIONS);
+		fetchRulesMock.mockResolvedValue([NEW_RULE]);
+
+		render(<RulesPage />);
+
+		await screen.findByRole('option', { name: 'Decrease sodium' });
+		fireEvent.change(screen.getByLabelText('rules.recommendation'), { target: { value: 'r1' } });
+		fireEvent.focus(screen.getByLabelText('rules.triggerIngredient'));
+		fireEvent.mouseDown(screen.getByRole('button', { name: 'Soy sauce' }));
+		fireEvent.focus(screen.getByLabelText('rules.roleOrTechnique'));
+		fireEvent.mouseDown(screen.getByRole('button', { name: 'seasoning' }));
+
+		expect(screen.getByText('rules.duplicateRule')).not.toBeNull();
+		expect((screen.getByText('rules.addRule') as HTMLButtonElement).disabled).toBe(true);
+		expect(createRuleMock).not.toHaveBeenCalled();
 	});
 });

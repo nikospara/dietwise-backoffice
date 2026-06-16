@@ -27,6 +27,15 @@
 		"revert": "Revert",
 		"deactivate": "Deactivate",
 		"activate": "Activate",
+		"recommendation": "Recommendation",
+		"triggerIngredient": "Trigger Ingredient",
+		"roleOrTechnique": "Role or Technique",
+		"selectRecommendation": "Choose a recommendation…",
+		"selectTriggerIngredient": "Choose a trigger ingredient…",
+		"selectRoleOrTechnique": "Choose a role or technique…",
+		"noRole": "No role or technique",
+		"addRule": "Add Rule",
+		"duplicateRule": "A rule with this recommendation, trigger ingredient and role already exists.",
 		"staleReload": "Someone changed this rule since you loaded it. The grid was refreshed — please redo your edit."
 	},
 	"home": {

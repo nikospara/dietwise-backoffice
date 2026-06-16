@@ -1,6 +1,19 @@
 import { apiFetch } from '@/api/client';
 
-export type RuleChangeState = 'UNCHANGED' | 'CHANGED';
+export type RuleChangeState = 'UNCHANGED' | 'CHANGED' | 'NEW';
+
+/** A selectable reference-data entry (Recommendation, Trigger Ingredient or Role or Technique) for the new-Rule form. */
+export interface ReferenceOption {
+	id: string;
+	name: string;
+}
+
+/** The reference data an editor chooses from when creating a new Rule. */
+export interface NewRuleOptions {
+	recommendations: ReferenceOption[];
+	triggerIngredients: ReferenceOption[];
+	rolesOrTechniques: ReferenceOption[];
+}
 
 /** A Rule as shown in the backoffice grid. `roleOrTechnique` and `rationale` may be absent. */
 export interface Rule {
@@ -55,4 +68,28 @@ export function setActive(id: string, active: boolean, baseVersion: number): Pro
 		method: 'PUT',
 		body: JSON.stringify({ active, baseVersion }),
 	});
+}
+
+/** Fetches the reference data (Recommendations, Trigger Ingredients, Roles or Techniques) for the new-Rule form. */
+export function fetchNewRuleOptions(): Promise<NewRuleOptions> {
+	return apiFetch<NewRuleOptions>('/rules/new-rule-options');
+}
+
+interface CreatedRuleResponse {
+	id: string;
+}
+
+/**
+ * Stages a brand-new Rule in the Working Copy from the chosen business key, resolving with its new id. Rejects with
+ * {@link ApiError} status 409 when a Rule with the same business key already exists.
+ */
+export function createRule(
+	recommendationId: string,
+	triggerIngredientId: string,
+	roleOrTechniqueId: string | null,
+): Promise<string> {
+	return apiFetch<CreatedRuleResponse>('/rules', {
+		method: 'POST',
+		body: JSON.stringify({ recommendationId, triggerIngredientId, roleOrTechniqueId }),
+	}).then((response) => response.id);
 }

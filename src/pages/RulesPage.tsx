@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '@/api/client';
-import { fetchRules, revertRationale, setActive, stageRationale, type Rule } from '@/api/rules';
+import {
+	createRule,
+	fetchNewRuleOptions,
+	fetchRules,
+	revertRationale,
+	setActive,
+	stageRationale,
+	type NewRuleOptions,
+	type ReferenceOption,
+	type Rule,
+} from '@/api/rules';
+import { Combobox } from '@/components/Combobox';
 
 const EMPTY = '—';
 
@@ -11,6 +22,10 @@ export function RulesPage() {
 	const [failed, setFailed] = useState(false);
 	const [drafts, setDrafts] = useState<Record<string, string>>({});
 	const [conflict, setConflict] = useState(false);
+	const [options, setOptions] = useState<NewRuleOptions | null>(null);
+	const [newRecommendationId, setNewRecommendationId] = useState('');
+	const [newTriggerIngredientId, setNewTriggerIngredientId] = useState<string | null>(null);
+	const [newRoleOrTechniqueId, setNewRoleOrTechniqueId] = useState<string | null>(null);
 
 	const reload = useCallback(() => {
 		fetchRules()
@@ -40,6 +55,20 @@ export function RulesPage() {
 		};
 	}, []);
 
+	useEffect(() => {
+		let cancelled = false;
+		fetchNewRuleOptions()
+			.then((loaded) => {
+				if (!cancelled) {
+					setOptions(loaded);
+				}
+			})
+			.catch(() => undefined);
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
 	const onDraftChange = (id: string, value: string) => {
 		setDrafts((current) => ({ ...current, [id]: value }));
 	};
@@ -55,7 +84,14 @@ export function RulesPage() {
 			setRules(
 				(current) =>
 					current?.map((r) =>
-						r.id === rule.id ? { ...r, rationale: draft, version, changeState: 'CHANGED' } : r,
+						r.id === rule.id
+							? {
+									...r,
+									rationale: draft,
+									version,
+									changeState: r.changeState === 'NEW' ? 'NEW' : 'CHANGED',
+								}
+							: r,
 					) ?? null,
 			);
 		} catch (error) {
@@ -87,6 +123,45 @@ export function RulesPage() {
 
 	const commitSetActive = (rule: Rule) => runAndReload(() => setActive(rule.id, !rule.active, rule.version));
 
+	const optionName = (entries: ReferenceOption[], id: string) =>
+		entries.find((entry) => entry.id === id)?.name ?? null;
+	const candidateRecommendation = options ? optionName(options.recommendations, newRecommendationId) : null;
+	const candidateTrigger =
+		options && newTriggerIngredientId ? optionName(options.triggerIngredients, newTriggerIngredientId) : null;
+	const candidateRole =
+		options && newRoleOrTechniqueId ? optionName(options.rolesOrTechniques, newRoleOrTechniqueId) : null;
+	const isDuplicate =
+		candidateRecommendation !== null &&
+		candidateTrigger !== null &&
+		(rules ?? []).some(
+			(rule) =>
+				rule.recommendation === candidateRecommendation &&
+				rule.triggerIngredient === candidateTrigger &&
+				(rule.roleOrTechnique ?? null) === candidateRole,
+		);
+	const canCreate = newRecommendationId !== '' && newTriggerIngredientId !== null && !isDuplicate;
+
+	const submitNewRule = async () => {
+		if (!canCreate || newTriggerIngredientId === null) {
+			return;
+		}
+		try {
+			await createRule(newRecommendationId, newTriggerIngredientId, newRoleOrTechniqueId);
+			setConflict(false);
+			setNewRecommendationId('');
+			setNewTriggerIngredientId(null);
+			setNewRoleOrTechniqueId(null);
+			reload();
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reload();
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
 	if (failed) {
 		return (
 			<div className="alert alert-error">
@@ -107,6 +182,44 @@ export function RulesPage() {
 					<span>{t('rules.staleReload')}</span>
 				</div>
 			) : null}
+			<div className="mb-4 flex flex-wrap items-end gap-2">
+				<select
+					className="select select-sm select-bordered"
+					aria-label={t('rules.recommendation')}
+					value={newRecommendationId}
+					onChange={(event) => setNewRecommendationId(event.target.value)}
+				>
+					<option value="">{t('rules.selectRecommendation')}</option>
+					{options?.recommendations.map((option) => (
+						<option key={option.id} value={option.id}>
+							{option.name}
+						</option>
+					))}
+				</select>
+				<div className="w-48">
+					<Combobox
+						options={options?.triggerIngredients ?? []}
+						value={newTriggerIngredientId}
+						onChange={setNewTriggerIngredientId}
+						label={t('rules.triggerIngredient')}
+						placeholder={t('rules.selectTriggerIngredient')}
+					/>
+				</div>
+				<div className="w-48">
+					<Combobox
+						options={options?.rolesOrTechniques ?? []}
+						value={newRoleOrTechniqueId}
+						onChange={setNewRoleOrTechniqueId}
+						label={t('rules.roleOrTechnique')}
+						placeholder={t('rules.selectRoleOrTechnique')}
+						clearLabel={t('rules.noRole')}
+					/>
+				</div>
+				<button type="button" className="btn btn-primary btn-sm" disabled={!canCreate} onClick={submitNewRule}>
+					{t('rules.addRule')}
+				</button>
+				{isDuplicate ? <span className="text-error text-sm">{t('rules.duplicateRule')}</span> : null}
+			</div>
 			<table className="table">
 				<thead>
 					<tr>
@@ -120,8 +233,11 @@ export function RulesPage() {
 				<tbody>
 					{rules.map((rule) => {
 						const changed = rule.changeState === 'CHANGED';
+						const isNew = rule.changeState === 'NEW';
+						const pending = rule.changeState !== 'UNCHANGED';
+						const rowClass = isNew ? 'bg-success/10' : rule.active ? '' : 'bg-error/10';
 						return (
-							<tr key={rule.id} className={rule.active ? '' : 'bg-error/10'}>
+							<tr key={rule.id} className={rowClass}>
 								<td>{rule.recommendation}</td>
 								<td>{rule.triggerIngredient}</td>
 								<td>{rule.roleOrTechnique ?? EMPTY}</td>
@@ -137,7 +253,7 @@ export function RulesPage() {
 								</td>
 								<td>
 									<div className="flex items-center gap-2">
-										{changed ? (
+										{pending ? (
 											<span className="badge badge-warning">{t('rules.pendingBadge')}</span>
 										) : null}
 										{changed ? (
@@ -149,13 +265,15 @@ export function RulesPage() {
 												{t('rules.revert')}
 											</button>
 										) : null}
-										<button
-											type="button"
-											className="btn btn-ghost btn-xs"
-											onClick={() => commitSetActive(rule)}
-										>
-											{rule.active ? t('rules.deactivate') : t('rules.activate')}
-										</button>
+										{isNew ? null : (
+											<button
+												type="button"
+												className="btn btn-ghost btn-xs"
+												onClick={() => commitSetActive(rule)}
+											>
+												{rule.active ? t('rules.deactivate') : t('rules.activate')}
+											</button>
+										)}
 									</div>
 								</td>
 							</tr>
