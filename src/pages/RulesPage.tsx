@@ -6,8 +6,12 @@ import {
 	createRule,
 	createTriggerIngredient,
 	discardNewRule,
+	editRoleOrTechnique,
+	editTriggerIngredient,
 	fetchNewRuleOptions,
+	fetchRoleOrTechnique,
 	fetchRules,
+	fetchTriggerIngredient,
 	revertRationale,
 	setActive,
 	stageRationale,
@@ -16,6 +20,9 @@ import {
 	type Rule,
 } from '@/api/rules';
 import { Combobox } from '@/components/Combobox';
+import { ReferenceEditDialog } from '@/components/ReferenceEditDialog';
+
+type EditTarget = { kind: 'trigger' | 'role'; id: string };
 
 const EMPTY = '—';
 
@@ -29,6 +36,7 @@ export function RulesPage() {
 	const [newRecommendationId, setNewRecommendationId] = useState('');
 	const [newTriggerIngredientId, setNewTriggerIngredientId] = useState<string | null>(null);
 	const [newRoleOrTechniqueId, setNewRoleOrTechniqueId] = useState<string | null>(null);
+	const [editing, setEditing] = useState<EditTarget | null>(null);
 
 	const reload = useCallback(() => {
 		fetchRules()
@@ -38,6 +46,12 @@ export function RulesPage() {
 				setFailed(false);
 			})
 			.catch(() => setFailed(true));
+	}, []);
+
+	const refreshOptions = useCallback(() => {
+		fetchNewRuleOptions()
+			.then(setOptions)
+			.catch(() => undefined);
 	}, []);
 
 	useEffect(() => {
@@ -181,6 +195,30 @@ export function RulesPage() {
 	const onCreateRole = (name: string) =>
 		createReference(createRoleOrTechnique, (loaded) => loaded.rolesOrTechniques, setNewRoleOrTechniqueId, name);
 
+	const commitEdit = async (
+		target: EditTarget,
+		name: string,
+		explanationForLlm: string | null,
+		baseVersion: number,
+	) => {
+		const edit = target.kind === 'trigger' ? editTriggerIngredient : editRoleOrTechnique;
+		setEditing(null);
+		try {
+			await edit(target.id, name, explanationForLlm, baseVersion);
+			setConflict(false);
+			reload();
+			refreshOptions();
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reload();
+				refreshOptions();
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
 	const submitNewRule = async () => {
 		if (!canCreate || newTriggerIngredientId === null) {
 			return;
@@ -212,6 +250,31 @@ export function RulesPage() {
 
 	if (rules === null) {
 		return <span className="loading loading-spinner loading-lg" aria-label={t('rules.loading')} />;
+	}
+
+	let editDialog = null;
+	if (editing !== null) {
+		const target = editing;
+		const candidates =
+			target.kind === 'trigger' ? (options?.triggerIngredients ?? []) : (options?.rolesOrTechniques ?? []);
+		const affectedCount = rules.filter(
+			(rule) => (target.kind === 'trigger' ? rule.triggerIngredientId : rule.roleOrTechniqueId) === target.id,
+		).length;
+		editDialog = (
+			<ReferenceEditDialog
+				referenceId={target.id}
+				title={t(target.kind === 'trigger' ? 'rules.editTriggerIngredient' : 'rules.editRoleOrTechnique')}
+				affectedCount={affectedCount}
+				takenNames={candidates
+					.filter((option) => option.id !== target.id)
+					.map((option) => option.name.toLowerCase())}
+				loadDetails={target.kind === 'trigger' ? fetchTriggerIngredient : fetchRoleOrTechnique}
+				onSubmit={(name, explanationForLlm, baseVersion) =>
+					commitEdit(target, name, explanationForLlm, baseVersion)
+				}
+				onCancel={() => setEditing(null)}
+			/>
+		);
 	}
 
 	return (
@@ -276,19 +339,44 @@ export function RulesPage() {
 				</thead>
 				<tbody>
 					{rules.map((rule) => {
-						const changed = rule.changeState === 'CHANGED';
 						const isNew = rule.changeState === 'NEW';
 						const pending = rule.changeState !== 'UNCHANGED';
+						const rationaleChanged = rule.changedFields.includes('RATIONALE');
+						const triggerChanged = rule.changedFields.includes('TRIGGER_INGREDIENT');
+						const roleChanged = rule.changedFields.includes('ROLE_OR_TECHNIQUE');
+						const roleId = rule.roleOrTechniqueId;
 						const rowClass = isNew ? 'bg-success/10' : rule.active ? '' : 'bg-error/10';
 						return (
 							<tr key={rule.id} className={rowClass}>
 								<td>{rule.recommendation}</td>
-								<td>{rule.triggerIngredient}</td>
-								<td>{rule.roleOrTechnique ?? EMPTY}</td>
+								<td className={triggerChanged ? 'bg-warning/10' : ''}>
+									<button
+										type="button"
+										className="link link-hover"
+										aria-label={t('rules.editTriggerIngredient')}
+										onClick={() => setEditing({ kind: 'trigger', id: rule.triggerIngredientId })}
+									>
+										{rule.triggerIngredient}
+									</button>
+								</td>
+								<td className={roleChanged ? 'bg-warning/10' : ''}>
+									{roleId === null ? (
+										EMPTY
+									) : (
+										<button
+											type="button"
+											className="link link-hover"
+											aria-label={t('rules.editRoleOrTechnique')}
+											onClick={() => setEditing({ kind: 'role', id: roleId })}
+										>
+											{rule.roleOrTechnique}
+										</button>
+									)}
+								</td>
 								<td>
 									<input
 										type="text"
-										className={`input input-sm input-bordered w-full ${changed ? 'border-warning bg-warning/10' : ''}`}
+										className={`input input-sm input-bordered w-full ${rationaleChanged ? 'border-warning bg-warning/10' : ''}`}
 										value={drafts[rule.id] ?? rule.rationale ?? ''}
 										aria-label={t('rules.rationaleEditLabel')}
 										onChange={(event) => onDraftChange(rule.id, event.target.value)}
@@ -300,7 +388,7 @@ export function RulesPage() {
 										{pending ? (
 											<span className="badge badge-warning">{t('rules.pendingBadge')}</span>
 										) : null}
-										{changed ? (
+										{rationaleChanged ? (
 											<button
 												type="button"
 												className="btn btn-ghost btn-xs"
@@ -333,6 +421,7 @@ export function RulesPage() {
 					})}
 				</tbody>
 			</table>
+			{editDialog}
 		</div>
 	);
 }

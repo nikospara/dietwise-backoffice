@@ -6,11 +6,16 @@ import {
 	createRule,
 	createTriggerIngredient,
 	discardNewRule,
+	editRoleOrTechnique,
+	editTriggerIngredient,
 	fetchNewRuleOptions,
+	fetchRoleOrTechnique,
 	fetchRules,
+	fetchTriggerIngredient,
 	revertRationale,
 	setActive,
 	stageRationale,
+	type Rule,
 } from '@/api/rules';
 import { RulesPage } from './RulesPage';
 
@@ -24,6 +29,10 @@ vi.mock('@/api/rules', () => ({
 	discardNewRule: vi.fn(),
 	createTriggerIngredient: vi.fn(),
 	createRoleOrTechnique: vi.fn(),
+	fetchTriggerIngredient: vi.fn(),
+	fetchRoleOrTechnique: vi.fn(),
+	editTriggerIngredient: vi.fn(),
+	editRoleOrTechnique: vi.fn(),
 }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
@@ -36,6 +45,10 @@ const createRuleMock = vi.mocked(createRule);
 const discardNewRuleMock = vi.mocked(discardNewRule);
 const createTriggerIngredientMock = vi.mocked(createTriggerIngredient);
 const createRoleOrTechniqueMock = vi.mocked(createRoleOrTechnique);
+const fetchTriggerIngredientMock = vi.mocked(fetchTriggerIngredient);
+const fetchRoleOrTechniqueMock = vi.mocked(fetchRoleOrTechnique);
+const editTriggerIngredientMock = vi.mocked(editTriggerIngredient);
+const editRoleOrTechniqueMock = vi.mocked(editRoleOrTechnique);
 
 const OPTIONS = {
 	recommendations: [{ id: 'r1', name: 'Decrease sodium' }],
@@ -43,41 +56,56 @@ const OPTIONS = {
 	rolesOrTechniques: [{ id: 'k1', name: 'seasoning' }],
 };
 
-const NEW_RULE = {
+const NEW_RULE: Rule = {
 	id: 'n1',
 	recommendation: 'Decrease sodium',
 	triggerIngredient: 'Soy sauce',
+	triggerIngredientId: 't1',
 	roleOrTechnique: 'seasoning',
+	roleOrTechniqueId: 'k1',
 	rationale: null,
 	active: true,
-	changeState: 'NEW' as const,
+	changeState: 'NEW',
+	changedFields: [],
 	version: 1,
 };
 
-const UNCHANGED_RULE = {
+const UNCHANGED_RULE: Rule = {
 	id: '1',
 	recommendation: 'Decrease red meat',
 	triggerIngredient: 'Beef',
+	triggerIngredientId: 'tb',
 	roleOrTechnique: 'minced in sauce',
+	roleOrTechniqueId: 'rm',
 	rationale: 'Use plant proteins.',
 	active: true,
-	changeState: 'UNCHANGED' as const,
+	changeState: 'UNCHANGED',
+	changedFields: [],
 	version: 0,
 };
 
-const ROLELESS_RULE = {
+const ROLELESS_RULE: Rule = {
 	id: '2',
 	recommendation: 'Decrease red meat',
 	triggerIngredient: 'Beef',
+	triggerIngredientId: 'tb',
 	roleOrTechnique: null,
+	roleOrTechniqueId: null,
 	rationale: null,
 	active: true,
-	changeState: 'UNCHANGED' as const,
+	changeState: 'UNCHANGED',
+	changedFields: [],
 	version: 0,
 };
 
-const CHANGED_RULE = { ...UNCHANGED_RULE, changeState: 'CHANGED' as const, version: 3 };
-const DEACTIVATED_RULE = { ...UNCHANGED_RULE, active: false, changeState: 'CHANGED' as const, version: 3 };
+const CHANGED_RULE: Rule = { ...UNCHANGED_RULE, changeState: 'CHANGED', changedFields: ['RATIONALE'], version: 3 };
+const DEACTIVATED_RULE: Rule = {
+	...UNCHANGED_RULE,
+	active: false,
+	changeState: 'CHANGED',
+	changedFields: ['ACTIVE'],
+	version: 3,
+};
 
 describe('RulesPage', () => {
 	beforeEach(() => {
@@ -90,6 +118,10 @@ describe('RulesPage', () => {
 		discardNewRuleMock.mockReset();
 		createTriggerIngredientMock.mockReset();
 		createRoleOrTechniqueMock.mockReset();
+		fetchTriggerIngredientMock.mockReset();
+		fetchRoleOrTechniqueMock.mockReset();
+		editTriggerIngredientMock.mockReset();
+		editRoleOrTechniqueMock.mockReset();
 		fetchNewRuleOptionsMock.mockResolvedValue({
 			recommendations: [],
 			triggerIngredients: [],
@@ -368,5 +400,79 @@ describe('RulesPage', () => {
 		expect(screen.getByText('rules.duplicateRule')).not.toBeNull();
 		expect((screen.getByText('rules.addRule') as HTMLButtonElement).disabled).toBe(true);
 		expect(createRuleMock).not.toHaveBeenCalled();
+	});
+
+	it('opens the trigger ingredient edit dialog from its grid cell and stages the edit', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchTriggerIngredientMock.mockResolvedValue({ name: 'Beef', explanationForLlm: 'Red meat.', version: 0 });
+		editTriggerIngredientMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerIngredient' }));
+
+		const nameInput = (await screen.findByLabelText('rules.editName')) as HTMLInputElement;
+		expect(nameInput.value).toBe('Beef');
+		expect(fetchTriggerIngredientMock).toHaveBeenCalledWith('tb');
+		fireEvent.change(nameInput, { target: { value: 'Bovine' } });
+		fireEvent.click(screen.getByText('rules.editSave'));
+
+		await waitFor(() => expect(editTriggerIngredientMock).toHaveBeenCalledWith('tb', 'Bovine', 'Red meat.', 0));
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('opens the role or technique edit dialog from its grid cell', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchRoleOrTechniqueMock.mockResolvedValue({ name: 'minced in sauce', explanationForLlm: null, version: 0 });
+		editRoleOrTechniqueMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.editRoleOrTechnique' }));
+
+		const nameInput = (await screen.findByLabelText('rules.editName')) as HTMLInputElement;
+		fireEvent.change(nameInput, { target: { value: 'folded through' } });
+		fireEvent.click(screen.getByText('rules.editSave'));
+
+		await waitFor(() => expect(editRoleOrTechniqueMock).toHaveBeenCalledWith('rm', 'folded through', null, 0));
+	});
+
+	it('highlights only the trigger cell when a shared trigger ingredient edit is pending', async () => {
+		fetchRulesMock.mockResolvedValue([{ ...UNCHANGED_RULE, changedFields: ['TRIGGER_INGREDIENT'] }]);
+
+		render(<RulesPage />);
+
+		const triggerCell = (await screen.findByText('Beef')).closest('td');
+		expect(triggerCell?.className).toContain('bg-warning');
+		const roleCell = screen.getByText('minced in sauce').closest('td');
+		expect(roleCell?.className).not.toContain('bg-warning');
+		const row = screen.getByText('Beef').closest('tr');
+		expect(row?.className).not.toContain('bg-success');
+		expect(row?.className).not.toContain('bg-error');
+	});
+
+	it('offers rationale revert only when the rationale field itself is changed, not a staged deactivation', async () => {
+		fetchRulesMock.mockResolvedValue([DEACTIVATED_RULE]);
+
+		render(<RulesPage />);
+
+		await screen.findByText('rules.activate');
+		expect(screen.queryByText('rules.revert')).toBeNull();
+		expect(screen.getByText('rules.pendingBadge')).not.toBeNull();
+	});
+
+	it('warns and refreshes the grid when a shared edit is rejected as stale', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchTriggerIngredientMock.mockResolvedValue({ name: 'Beef', explanationForLlm: null, version: 0 });
+		editTriggerIngredientMock.mockRejectedValue(new ApiError(409, 'conflict'));
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerIngredient' }));
+		fireEvent.change(await screen.findByLabelText('rules.editName'), { target: { value: 'Bovine' } });
+		fireEvent.click(screen.getByText('rules.editSave'));
+
+		expect(await screen.findByText('rules.staleReload')).not.toBeNull();
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
 	});
 });

@@ -38,7 +38,16 @@
 		"addRule": "Add Rule",
 		"addOption": "Add \"{{name}}\"",
 		"duplicateRule": "A rule with this recommendation, trigger ingredient and role already exists.",
-		"staleReload": "Someone changed this rule since you loaded it. The grid was refreshed — please redo your edit."
+		"staleReload": "Someone changed this rule since you loaded it. The grid was refreshed — please redo your edit.",
+		"editTriggerIngredient": "Edit Trigger Ingredient",
+		"editRoleOrTechnique": "Edit Role or Technique",
+		"editName": "Name",
+		"editExplanation": "Explanation for the LLM",
+		"editBlastRadius": "Shared master data — this edit affects {{count}} rule(s).",
+		"editDuplicateName": "Another entry already uses this name.",
+		"editLoadError": "Could not load this entry. Please close and try again.",
+		"editCancel": "Cancel",
+		"editSave": "Save"
 	},
 	"home": {
 		"welcome": "Welcome, {{name}}",
