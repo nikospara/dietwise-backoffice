@@ -9,13 +9,18 @@ import {
 	editRoleOrTechnique,
 	editTriggerIngredient,
 	fetchNewRuleOptions,
+	fetchRationaleTranslations,
 	fetchRoleOrTechnique,
 	fetchRules,
 	fetchTriggerIngredient,
+	type Language,
 	revertRationale,
+	revertRationaleTranslation,
 	setActive,
 	stageRationale,
+	stageRationaleTranslation,
 	type Rule,
+	type TranslationState,
 } from '@/api/rules';
 import { RulesPage } from './RulesPage';
 
@@ -33,6 +38,10 @@ vi.mock('@/api/rules', () => ({
 	fetchRoleOrTechnique: vi.fn(),
 	editTriggerIngredient: vi.fn(),
 	editRoleOrTechnique: vi.fn(),
+	fetchRationaleTranslations: vi.fn(),
+	stageRationaleTranslation: vi.fn(),
+	revertRationaleTranslation: vi.fn(),
+	LANGUAGES: ['EL', 'LT', 'NL'],
 }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
@@ -49,6 +58,16 @@ const fetchTriggerIngredientMock = vi.mocked(fetchTriggerIngredient);
 const fetchRoleOrTechniqueMock = vi.mocked(fetchRoleOrTechnique);
 const editTriggerIngredientMock = vi.mocked(editTriggerIngredient);
 const editRoleOrTechniqueMock = vi.mocked(editRoleOrTechnique);
+const fetchRationaleTranslationsMock = vi.mocked(fetchRationaleTranslations);
+const stageRationaleTranslationMock = vi.mocked(stageRationaleTranslation);
+const revertRationaleTranslationMock = vi.mocked(revertRationaleTranslation);
+
+const NO_TRANSLATIONS: Record<Language, TranslationState> = { EL: 'MISSING', LT: 'MISSING', NL: 'MISSING' };
+const NO_STAGED_TRANSLATIONS = {
+	EL: { text: null, version: 0 },
+	LT: { text: null, version: 0 },
+	NL: { text: null, version: 0 },
+};
 
 const OPTIONS = {
 	recommendations: [{ id: 'r1', name: 'Decrease sodium' }],
@@ -67,6 +86,7 @@ const NEW_RULE: Rule = {
 	active: true,
 	changeState: 'NEW',
 	changedFields: [],
+	rationaleTranslations: NO_TRANSLATIONS,
 	version: 1,
 };
 
@@ -81,6 +101,7 @@ const UNCHANGED_RULE: Rule = {
 	active: true,
 	changeState: 'UNCHANGED',
 	changedFields: [],
+	rationaleTranslations: NO_TRANSLATIONS,
 	version: 0,
 };
 
@@ -95,6 +116,7 @@ const ROLELESS_RULE: Rule = {
 	active: true,
 	changeState: 'UNCHANGED',
 	changedFields: [],
+	rationaleTranslations: NO_TRANSLATIONS,
 	version: 0,
 };
 
@@ -122,6 +144,9 @@ describe('RulesPage', () => {
 		fetchRoleOrTechniqueMock.mockReset();
 		editTriggerIngredientMock.mockReset();
 		editRoleOrTechniqueMock.mockReset();
+		fetchRationaleTranslationsMock.mockReset();
+		stageRationaleTranslationMock.mockReset();
+		revertRationaleTranslationMock.mockReset();
 		fetchNewRuleOptionsMock.mockResolvedValue({
 			recommendations: [],
 			triggerIngredients: [],
@@ -471,6 +496,77 @@ describe('RulesPage', () => {
 		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerIngredient' }));
 		fireEvent.change(await screen.findByLabelText('rules.editName'), { target: { value: 'Bovine' } });
 		fireEvent.click(screen.getByText('rules.editSave'));
+
+		expect(await screen.findByText('rules.staleReload')).not.toBeNull();
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('shows a per-language rationale-translation completeness chip styled by state', async () => {
+		fetchRulesMock.mockResolvedValue([
+			{ ...UNCHANGED_RULE, rationaleTranslations: { EL: 'STAGED', LT: 'MISSING', NL: 'PRESENT' } },
+		]);
+
+		render(<RulesPage />);
+
+		await screen.findByLabelText('rules.rationaleEditLabel');
+		expect(screen.getByText('EL').className).toContain('badge-warning');
+		expect(screen.getByText('LT').className).toContain('badge-ghost');
+		expect(screen.getByText('NL').className).toContain('badge-success');
+	});
+
+	it('opens the rationale translations dialog and stages a translation against its base version', async () => {
+		fetchRulesMock.mockResolvedValueOnce([UNCHANGED_RULE]).mockResolvedValueOnce([UNCHANGED_RULE]);
+		fetchRationaleTranslationsMock.mockResolvedValue(NO_STAGED_TRANSLATIONS);
+		stageRationaleTranslationMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTranslations' }));
+
+		const greek = (await screen.findByLabelText('EL')) as HTMLTextAreaElement;
+		fireEvent.change(greek, { target: { value: 'Ελληνική αιτιολόγηση.' } });
+		fireEvent.click(screen.getAllByText('rules.translationSave')[0]);
+
+		await waitFor(() =>
+			expect(stageRationaleTranslationMock).toHaveBeenCalledWith('1', 'EL', 'Ελληνική αιτιολόγηση.', 0),
+		);
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('reverts a staged rationale translation against its base version', async () => {
+		fetchRulesMock
+			.mockResolvedValueOnce([
+				{ ...UNCHANGED_RULE, rationaleTranslations: { EL: 'STAGED', LT: 'MISSING', NL: 'MISSING' } },
+			])
+			.mockResolvedValueOnce([UNCHANGED_RULE]);
+		fetchRationaleTranslationsMock.mockResolvedValue({
+			EL: { text: 'Παλιά μετάφραση.', version: 2 },
+			LT: { text: null, version: 0 },
+			NL: { text: null, version: 0 },
+		});
+		revertRationaleTranslationMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTranslations' }));
+		fireEvent.click(await screen.findByText('rules.translationRevert'));
+
+		await waitFor(() => expect(revertRationaleTranslationMock).toHaveBeenCalledWith('1', 'EL', 2));
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('warns and refreshes the grid when staging a translation is rejected as stale', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchRationaleTranslationsMock.mockResolvedValue(NO_STAGED_TRANSLATIONS);
+		stageRationaleTranslationMock.mockRejectedValue(new ApiError(409, 'conflict'));
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTranslations' }));
+		fireEvent.change((await screen.findByLabelText('NL')) as HTMLTextAreaElement, {
+			target: { value: 'Nederlands.' },
+		});
+		fireEvent.click(screen.getAllByText('rules.translationSave')[2]);
 
 		expect(await screen.findByText('rules.staleReload')).not.toBeNull();
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));

@@ -5,6 +5,21 @@ export type RuleChangeState = 'UNCHANGED' | 'CHANGED' | 'NEW';
 /** A cell of a Rule that can carry a pending change, highlighted independently in the grid. */
 export type RuleField = 'RATIONALE' | 'ACTIVE' | 'TRIGGER_INGREDIENT' | 'ROLE_OR_TECHNIQUE';
 
+/** A non-English language a Rule's rationale and shared entities can be translated into. English is the master/fallback. */
+export type Language = 'EL' | 'LT' | 'NL';
+
+/** The non-English languages, in display order. */
+export const LANGUAGES: Language[] = ['EL', 'LT', 'NL'];
+
+/** Whether a translatable thing is translated in a given language, missing (falls back to English), or has a pending change. */
+export type TranslationState = 'MISSING' | 'PRESENT' | 'STAGED';
+
+/** An effective translated text and the Working Copy version a subsequent edit must be based on (0 when not staged). */
+export interface VersionedText {
+	text: string | null;
+	version: number;
+}
+
 /** A selectable reference-data entry (Recommendation, Trigger Ingredient or Role or Technique) for the new-Rule form. */
 export interface ReferenceOption {
 	id: string;
@@ -41,6 +56,8 @@ export interface Rule {
 	changeState: RuleChangeState;
 	/** Which cells carry a pending change, including a shared Trigger Ingredient or Role or Technique edited elsewhere. */
 	changedFields: RuleField[];
+	/** Completeness of the rationale translation in each non-English language. */
+	rationaleTranslations: Record<Language, TranslationState>;
 	/** Working Copy version to base the next edit on. */
 	version: number;
 }
@@ -159,6 +176,40 @@ export function editRoleOrTechnique(
 	return apiFetch<void>(`/rules/roles-or-techniques/${id}`, {
 		method: 'PUT',
 		body: JSON.stringify({ name, explanationForLlm, baseVersion }),
+	});
+}
+
+/**
+ * Fetches the effective rationale translation of a Rule for each non-English language (master overlaid by any Staged
+ * Change) and the Working Copy version to base an edit on, to pre-fill the translations dialog.
+ */
+export function fetchRationaleTranslations(id: string): Promise<Record<Language, VersionedText>> {
+	return apiFetch<Record<Language, VersionedText>>(`/rules/${id}/rationale-translations`);
+}
+
+/**
+ * Stages a Rule's rationale translation for one language in the Working Copy. A {@code null} rationale clears the
+ * translation. Rejects with {@link ApiError} status 409 when the base version is stale.
+ */
+export function stageRationaleTranslation(
+	id: string,
+	lang: Language,
+	rationale: string | null,
+	baseVersion: number,
+): Promise<void> {
+	return apiFetch<void>(`/rules/${id}/rationale-translations/${lang}`, {
+		method: 'PUT',
+		body: JSON.stringify({ rationale, baseVersion }),
+	});
+}
+
+/**
+ * Reverts a Rule's staged rationale translation for one language, restoring the published master translation. Rejects
+ * with {@link ApiError} status 409 when the base version is stale.
+ */
+export function revertRationaleTranslation(id: string, lang: Language, baseVersion: number): Promise<void> {
+	return apiFetch<void>(`/rules/${id}/rationale-translations/${lang}?baseVersion=${baseVersion}`, {
+		method: 'DELETE',
 	});
 }
 

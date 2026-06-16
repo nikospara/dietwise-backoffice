@@ -9,20 +9,35 @@ import {
 	editRoleOrTechnique,
 	editTriggerIngredient,
 	fetchNewRuleOptions,
+	fetchRationaleTranslations,
 	fetchRoleOrTechnique,
 	fetchRules,
 	fetchTriggerIngredient,
+	type Language,
+	LANGUAGES,
 	revertRationale,
+	revertRationaleTranslation,
 	setActive,
 	stageRationale,
+	stageRationaleTranslation,
 	type NewRuleOptions,
 	type ReferenceOption,
 	type Rule,
+	type TranslationState,
 } from '@/api/rules';
 import { Combobox } from '@/components/Combobox';
+import { RationaleTranslationsDialog } from '@/components/RationaleTranslationsDialog';
 import { ReferenceEditDialog } from '@/components/ReferenceEditDialog';
 
 type EditTarget = { kind: 'trigger' | 'role'; id: string };
+type TranslationTarget = { ruleId: string; englishRationale: string | null };
+
+const translationChipClass = (state: TranslationState) =>
+	state === 'STAGED'
+		? 'badge badge-sm badge-warning'
+		: state === 'PRESENT'
+			? 'badge badge-sm badge-success'
+			: 'badge badge-sm badge-ghost';
 
 const EMPTY = '—';
 
@@ -37,6 +52,7 @@ export function RulesPage() {
 	const [newTriggerIngredientId, setNewTriggerIngredientId] = useState<string | null>(null);
 	const [newRoleOrTechniqueId, setNewRoleOrTechniqueId] = useState<string | null>(null);
 	const [editing, setEditing] = useState<EditTarget | null>(null);
+	const [translating, setTranslating] = useState<TranslationTarget | null>(null);
 
 	const reload = useCallback(() => {
 		fetchRules()
@@ -219,6 +235,43 @@ export function RulesPage() {
 		}
 	};
 
+	const commitStageTranslation = async (
+		ruleId: string,
+		lang: Language,
+		rationale: string | null,
+		baseVersion: number,
+	) => {
+		setTranslating(null);
+		try {
+			await stageRationaleTranslation(ruleId, lang, rationale, baseVersion);
+			setConflict(false);
+			reload();
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reload();
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
+	const commitRevertTranslation = async (ruleId: string, lang: Language, baseVersion: number) => {
+		setTranslating(null);
+		try {
+			await revertRationaleTranslation(ruleId, lang, baseVersion);
+			setConflict(false);
+			reload();
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reload();
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
 	const submitNewRule = async () => {
 		if (!canCreate || newTriggerIngredientId === null) {
 			return;
@@ -273,6 +326,23 @@ export function RulesPage() {
 					commitEdit(target, name, explanationForLlm, baseVersion)
 				}
 				onCancel={() => setEditing(null)}
+			/>
+		);
+	}
+
+	let translationsDialog = null;
+	if (translating !== null) {
+		const target = translating;
+		translationsDialog = (
+			<RationaleTranslationsDialog
+				ruleId={target.ruleId}
+				englishRationale={target.englishRationale}
+				loadTranslations={fetchRationaleTranslations}
+				onStage={(lang, rationale, baseVersion) =>
+					commitStageTranslation(target.ruleId, lang, rationale, baseVersion)
+				}
+				onRevert={(lang, baseVersion) => commitRevertTranslation(target.ruleId, lang, baseVersion)}
+				onCancel={() => setTranslating(null)}
 			/>
 		);
 	}
@@ -382,6 +452,23 @@ export function RulesPage() {
 										onChange={(event) => onDraftChange(rule.id, event.target.value)}
 										onBlur={() => commitRationale(rule)}
 									/>
+									<button
+										type="button"
+										className="mt-1 flex gap-1"
+										aria-label={t('rules.editTranslations')}
+										onClick={() =>
+											setTranslating({ ruleId: rule.id, englishRationale: rule.rationale })
+										}
+									>
+										{LANGUAGES.map((lang) => (
+											<span
+												key={lang}
+												className={translationChipClass(rule.rationaleTranslations[lang])}
+											>
+												{lang}
+											</span>
+										))}
+									</button>
 								</td>
 								<td>
 									<div className="flex items-center gap-2">
@@ -422,6 +509,7 @@ export function RulesPage() {
 				</tbody>
 			</table>
 			{editDialog}
+			{translationsDialog}
 		</div>
 	);
 }
