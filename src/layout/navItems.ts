@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { FiHome } from 'react-icons/fi';
+import { FiHome, FiList } from 'react-icons/fi';
 
 export interface NavItem {
 	to: string;
@@ -10,4 +10,7 @@ export interface NavItem {
 }
 
 // Entity CRUD routes get appended here as the backoffice grows.
-export const navItems: NavItem[] = [{ to: '/', labelKey: 'nav.home', icon: FiHome, end: true }];
+export const navItems: NavItem[] = [
+	{ to: '/', labelKey: 'nav.home', icon: FiHome, end: true },
+	{ to: '/rules', labelKey: 'nav.rules', icon: FiList },
+];

@@ -3,13 +3,25 @@
 		"title": "DietWise Backoffice"
 	},
 	"nav": {
-		"home": "Home"
+		"home": "Home",
+		"rules": "Rules"
 	},
 	"auth": {
 		"signingIn": "Signing in…",
 		"signInError": "Sign-in failed",
 		"logout": "Log out",
-		"missingRole": "Your account does not have the 'backoffice' role. Some actions may be denied by the server."
+		"missingRole": "Your account does not have the 'backoffice' role. Some actions may be denied by the server.",
+		"forbidden": "You do not have permission to view this page. The 'backoffice' role is required."
+	},
+	"rules": {
+		"title": "Rules",
+		"loading": "Loading rules…",
+		"loadError": "Could not load the rules. Please try again.",
+		"columnRecommendation": "Recommendation",
+		"columnTriggerIngredient": "Trigger Ingredient",
+		"columnRoleOrTechnique": "Role or Technique",
+		"columnRationale": "Rationale",
+		"columnActions": "Actions"
 	},
 	"home": {
 		"welcome": "Welcome, {{name}}",
