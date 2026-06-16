@@ -21,7 +21,10 @@
 		"columnTriggerIngredient": "Trigger Ingredient",
 		"columnRoleOrTechnique": "Role or Technique",
 		"columnRationale": "Rationale",
-		"columnActions": "Actions"
+		"columnActions": "Actions",
+		"rationaleEditLabel": "Edit rationale",
+		"pendingBadge": "Pending",
+		"staleReload": "Someone changed this rule since you loaded it. The grid was refreshed — please redo your edit."
 	},
 	"home": {
 		"welcome": "Welcome, {{name}}",
