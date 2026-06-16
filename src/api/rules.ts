@@ -83,6 +83,28 @@ export function fetchNewRuleOptions(): Promise<NewRuleOptions> {
 	return apiFetch<NewRuleOptions>('/rules/new-rule-options');
 }
 
+/**
+ * Stages a brand-new Trigger Ingredient in the Working Copy, resolving with its id and name. Rejects with
+ * {@link ApiError} status 409 when a Trigger Ingredient with the same name already exists.
+ */
+export function createTriggerIngredient(name: string): Promise<ReferenceOption> {
+	return apiFetch<ReferenceOption>('/rules/trigger-ingredients', {
+		method: 'POST',
+		body: JSON.stringify({ name }),
+	});
+}
+
+/**
+ * Stages a brand-new Role or Technique in the Working Copy, resolving with its id and name. Rejects with
+ * {@link ApiError} status 409 when a Role or Technique with the same name already exists.
+ */
+export function createRoleOrTechnique(name: string): Promise<ReferenceOption> {
+	return apiFetch<ReferenceOption>('/rules/roles-or-techniques', {
+		method: 'POST',
+		body: JSON.stringify({ name }),
+	});
+}
+
 interface CreatedRuleResponse {
 	id: string;
 }

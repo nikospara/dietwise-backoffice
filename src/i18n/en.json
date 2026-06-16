@@ -36,6 +36,7 @@
 		"selectRoleOrTechnique": "Choose a role or technique…",
 		"noRole": "No role or technique",
 		"addRule": "Add Rule",
+		"addOption": "Add \"{{name}}\"",
 		"duplicateRule": "A rule with this recommendation, trigger ingredient and role already exists.",
 		"staleReload": "Someone changed this rule since you loaded it. The grid was refreshed — please redo your edit."
 	},

@@ -13,21 +13,47 @@ interface ComboboxProps {
 	placeholder?: string;
 	/** When set, the list offers an entry that clears the selection (for an optional field). */
 	clearLabel?: string;
+	/** When set, the list offers a "create" entry with the typed name when no existing option matches it exactly. */
+	onCreate?: (name: string) => void;
+	/** Renders the label of the create entry for the typed name; required for the create entry to appear. */
+	createLabel?: (name: string) => string;
 }
 
 /**
  * A type-to-filter picker over a fixed set of existing entries. The text input filters the options by name while
  * focused; selecting an option reports its id. With {@link ComboboxProps.clearLabel} the list also offers a way to
- * clear the selection.
+ * clear the selection. With {@link ComboboxProps.onCreate} the list offers a way to create a new entry from the typed
+ * name when none matches it exactly, so an existing entry is reused rather than duplicated.
  */
-export function Combobox({ options, value, onChange, label, placeholder, clearLabel }: ComboboxProps) {
+export function Combobox({
+	options,
+	value,
+	onChange,
+	label,
+	placeholder,
+	clearLabel,
+	onCreate,
+	createLabel,
+}: ComboboxProps) {
 	const [query, setQuery] = useState('');
 	const [open, setOpen] = useState(false);
 	const selected = options.find((option) => option.id === value) ?? null;
 	const filtered = options.filter((option) => option.name.toLowerCase().includes(query.toLowerCase()));
+	const trimmedQuery = query.trim();
+	const canCreate =
+		onCreate !== undefined &&
+		createLabel !== undefined &&
+		trimmedQuery !== '' &&
+		!options.some((option) => option.name.toLowerCase() === trimmedQuery.toLowerCase());
 
 	const select = (id: string | null) => {
 		onChange(id);
+		setQuery('');
+		setOpen(false);
+	};
+
+	const create = (name: string) => {
+		onCreate?.(name);
 		setQuery('');
 		setOpen(false);
 	};
@@ -63,6 +89,13 @@ export function Combobox({ options, value, onChange, label, placeholder, clearLa
 							</button>
 						</li>
 					))}
+					{canCreate ? (
+						<li>
+							<button type="button" className="font-medium" onMouseDown={() => create(trimmedQuery)}>
+								{createLabel?.(trimmedQuery)}
+							</button>
+						</li>
+					) : null}
 				</ul>
 			) : null}
 		</div>

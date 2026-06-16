@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '@/api/client';
 import {
+	createRoleOrTechnique,
 	createRule,
+	createTriggerIngredient,
 	discardNewRule,
 	fetchNewRuleOptions,
 	fetchRules,
@@ -144,6 +146,41 @@ export function RulesPage() {
 		);
 	const canCreate = newRecommendationId !== '' && newTriggerIngredientId !== null && !isDuplicate;
 
+	const createReference = async (
+		create: (name: string) => Promise<ReferenceOption>,
+		pick: (loaded: NewRuleOptions) => ReferenceOption[],
+		select: (id: string) => void,
+		name: string,
+	) => {
+		try {
+			const created = await create(name);
+			const refreshed = await fetchNewRuleOptions();
+			setOptions(refreshed);
+			select(created.id);
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				const refreshed = await fetchNewRuleOptions();
+				setOptions(refreshed);
+				const match = pick(refreshed).find((option) => option.name.toLowerCase() === name.toLowerCase());
+				if (match) {
+					select(match.id);
+				}
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
+	const onCreateTrigger = (name: string) =>
+		createReference(
+			createTriggerIngredient,
+			(loaded) => loaded.triggerIngredients,
+			setNewTriggerIngredientId,
+			name,
+		);
+	const onCreateRole = (name: string) =>
+		createReference(createRoleOrTechnique, (loaded) => loaded.rolesOrTechniques, setNewRoleOrTechniqueId, name);
+
 	const submitNewRule = async () => {
 		if (!canCreate || newTriggerIngredientId === null) {
 			return;
@@ -206,6 +243,8 @@ export function RulesPage() {
 						onChange={setNewTriggerIngredientId}
 						label={t('rules.triggerIngredient')}
 						placeholder={t('rules.selectTriggerIngredient')}
+						onCreate={onCreateTrigger}
+						createLabel={(name) => t('rules.addOption', { name })}
 					/>
 				</div>
 				<div className="w-48">
@@ -216,6 +255,8 @@ export function RulesPage() {
 						label={t('rules.roleOrTechnique')}
 						placeholder={t('rules.selectRoleOrTechnique')}
 						clearLabel={t('rules.noRole')}
+						onCreate={onCreateRole}
+						createLabel={(name) => t('rules.addOption', { name })}
 					/>
 				</div>
 				<button type="button" className="btn btn-primary btn-sm" disabled={!canCreate} onClick={submitNewRule}>

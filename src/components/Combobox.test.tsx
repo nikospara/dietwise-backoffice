@@ -38,4 +38,46 @@ describe('Combobox', () => {
 
 		expect(onChange).toHaveBeenCalledWith(null);
 	});
+
+	it('offers a create entry when the query has no exact match and reports the typed name', () => {
+		const onCreate = vi.fn();
+		render(
+			<Combobox
+				options={OPTIONS}
+				value={null}
+				onChange={vi.fn()}
+				label="trigger"
+				onCreate={onCreate}
+				createLabel={(name) => `Add "${name}"`}
+			/>,
+		);
+
+		const input = screen.getByLabelText('trigger');
+		fireEvent.focus(input);
+		fireEvent.change(input, { target: { value: 'Quinoa flour' } });
+		fireEvent.mouseDown(screen.getByText('Add "Quinoa flour"'));
+
+		expect(onCreate).toHaveBeenCalledWith('Quinoa flour');
+	});
+
+	it('does not offer a create entry when the query exactly matches an existing option', () => {
+		const onCreate = vi.fn();
+		render(
+			<Combobox
+				options={OPTIONS}
+				value={null}
+				onChange={vi.fn()}
+				label="trigger"
+				onCreate={onCreate}
+				createLabel={(name) => `Add "${name}"`}
+			/>,
+		);
+
+		const input = screen.getByLabelText('trigger');
+		fireEvent.focus(input);
+		fireEvent.change(input, { target: { value: 'beef' } });
+
+		expect(screen.queryByText('Add "beef"')).toBeNull();
+		expect(screen.getByText('Beef')).not.toBeNull();
+	});
 });

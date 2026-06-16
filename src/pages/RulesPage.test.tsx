@@ -2,7 +2,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/client';
 import {
+	createRoleOrTechnique,
 	createRule,
+	createTriggerIngredient,
 	discardNewRule,
 	fetchNewRuleOptions,
 	fetchRules,
@@ -20,6 +22,8 @@ vi.mock('@/api/rules', () => ({
 	fetchNewRuleOptions: vi.fn(),
 	createRule: vi.fn(),
 	discardNewRule: vi.fn(),
+	createTriggerIngredient: vi.fn(),
+	createRoleOrTechnique: vi.fn(),
 }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
@@ -30,6 +34,8 @@ const setActiveMock = vi.mocked(setActive);
 const fetchNewRuleOptionsMock = vi.mocked(fetchNewRuleOptions);
 const createRuleMock = vi.mocked(createRule);
 const discardNewRuleMock = vi.mocked(discardNewRule);
+const createTriggerIngredientMock = vi.mocked(createTriggerIngredient);
+const createRoleOrTechniqueMock = vi.mocked(createRoleOrTechnique);
 
 const OPTIONS = {
 	recommendations: [{ id: 'r1', name: 'Decrease sodium' }],
@@ -82,6 +88,8 @@ describe('RulesPage', () => {
 		fetchNewRuleOptionsMock.mockReset();
 		createRuleMock.mockReset();
 		discardNewRuleMock.mockReset();
+		createTriggerIngredientMock.mockReset();
+		createRoleOrTechniqueMock.mockReset();
 		fetchNewRuleOptionsMock.mockResolvedValue({
 			recommendations: [],
 			triggerIngredients: [],
@@ -303,6 +311,45 @@ describe('RulesPage', () => {
 
 		await screen.findByText('rules.deactivate');
 		expect(screen.queryByText('rules.discard')).toBeNull();
+	});
+
+	it('adds a new trigger ingredient from the combobox, selects it and refreshes the options', async () => {
+		fetchNewRuleOptionsMock.mockResolvedValueOnce(OPTIONS).mockResolvedValueOnce({
+			...OPTIONS,
+			triggerIngredients: [...OPTIONS.triggerIngredients, { id: 't2', name: 'Quinoa flour' }],
+		});
+		fetchRulesMock.mockResolvedValue([]);
+		createTriggerIngredientMock.mockResolvedValue({ id: 't2', name: 'Quinoa flour' });
+
+		render(<RulesPage />);
+
+		await screen.findByRole('option', { name: 'Decrease sodium' });
+		const triggerInput = screen.getByLabelText('rules.triggerIngredient');
+		fireEvent.focus(triggerInput);
+		fireEvent.change(triggerInput, { target: { value: 'Quinoa flour' } });
+		fireEvent.mouseDown(screen.getByText('rules.addOption'));
+
+		await waitFor(() => expect(createTriggerIngredientMock).toHaveBeenCalledWith('Quinoa flour'));
+		await waitFor(() => expect(fetchNewRuleOptionsMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('adds a new role or technique from the combobox', async () => {
+		fetchNewRuleOptionsMock.mockResolvedValueOnce(OPTIONS).mockResolvedValueOnce({
+			...OPTIONS,
+			rolesOrTechniques: [...OPTIONS.rolesOrTechniques, { id: 'k2', name: 'Binding agent' }],
+		});
+		fetchRulesMock.mockResolvedValue([]);
+		createRoleOrTechniqueMock.mockResolvedValue({ id: 'k2', name: 'Binding agent' });
+
+		render(<RulesPage />);
+
+		await screen.findByRole('option', { name: 'Decrease sodium' });
+		const roleInput = screen.getByLabelText('rules.roleOrTechnique');
+		fireEvent.focus(roleInput);
+		fireEvent.change(roleInput, { target: { value: 'Binding agent' } });
+		fireEvent.mouseDown(screen.getByText('rules.addOption'));
+
+		await waitFor(() => expect(createRoleOrTechniqueMock).toHaveBeenCalledWith('Binding agent'));
 	});
 
 	it('blocks adding a rule whose business key already exists', async () => {
