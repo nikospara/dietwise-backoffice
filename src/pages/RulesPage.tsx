@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiError } from '@/api/client';
 import {
 	createRule,
+	discardNewRule,
 	fetchNewRuleOptions,
 	fetchRules,
 	revertRationale,
@@ -122,6 +123,8 @@ export function RulesPage() {
 	const commitRevert = (rule: Rule) => runAndReload(() => revertRationale(rule.id, rule.version));
 
 	const commitSetActive = (rule: Rule) => runAndReload(() => setActive(rule.id, !rule.active, rule.version));
+
+	const commitDiscard = (rule: Rule) => runAndReload(() => discardNewRule(rule.id, rule.version));
 
 	const optionName = (entries: ReferenceOption[], id: string) =>
 		entries.find((entry) => entry.id === id)?.name ?? null;
@@ -265,7 +268,15 @@ export function RulesPage() {
 												{t('rules.revert')}
 											</button>
 										) : null}
-										{isNew ? null : (
+										{isNew ? (
+											<button
+												type="button"
+												className="btn btn-ghost btn-xs"
+												onClick={() => commitDiscard(rule)}
+											>
+												{t('rules.discard')}
+											</button>
+										) : (
 											<button
 												type="button"
 												className="btn btn-ghost btn-xs"

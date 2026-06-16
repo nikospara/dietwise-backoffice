@@ -27,6 +27,7 @@
 		"revert": "Revert",
 		"deactivate": "Deactivate",
 		"activate": "Activate",
+		"discard": "Discard",
 		"recommendation": "Recommendation",
 		"triggerIngredient": "Trigger Ingredient",
 		"roleOrTechnique": "Role or Technique",

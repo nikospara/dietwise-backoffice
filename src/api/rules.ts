@@ -70,6 +70,14 @@ export function setActive(id: string, active: boolean, baseVersion: number): Pro
 	});
 }
 
+/**
+ * Discards an unpublished new Rule, removing its Working Copy row so it disappears from the grid. Rejects with
+ * {@link ApiError} status 409 when the base version is stale.
+ */
+export function discardNewRule(id: string, baseVersion: number): Promise<void> {
+	return apiFetch<void>(`/rules/${id}?baseVersion=${baseVersion}`, { method: 'DELETE' });
+}
+
 /** Fetches the reference data (Recommendations, Trigger Ingredients, Roles or Techniques) for the new-Rule form. */
 export function fetchNewRuleOptions(): Promise<NewRuleOptions> {
 	return apiFetch<NewRuleOptions>('/rules/new-rule-options');

@@ -1,7 +1,15 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/client';
-import { createRule, fetchNewRuleOptions, fetchRules, revertRationale, setActive, stageRationale } from '@/api/rules';
+import {
+	createRule,
+	discardNewRule,
+	fetchNewRuleOptions,
+	fetchRules,
+	revertRationale,
+	setActive,
+	stageRationale,
+} from '@/api/rules';
 import { RulesPage } from './RulesPage';
 
 vi.mock('@/api/rules', () => ({
@@ -11,6 +19,7 @@ vi.mock('@/api/rules', () => ({
 	setActive: vi.fn(),
 	fetchNewRuleOptions: vi.fn(),
 	createRule: vi.fn(),
+	discardNewRule: vi.fn(),
 }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
@@ -20,6 +29,7 @@ const revertRationaleMock = vi.mocked(revertRationale);
 const setActiveMock = vi.mocked(setActive);
 const fetchNewRuleOptionsMock = vi.mocked(fetchNewRuleOptions);
 const createRuleMock = vi.mocked(createRule);
+const discardNewRuleMock = vi.mocked(discardNewRule);
 
 const OPTIONS = {
 	recommendations: [{ id: 'r1', name: 'Decrease sodium' }],
@@ -71,6 +81,7 @@ describe('RulesPage', () => {
 		setActiveMock.mockReset();
 		fetchNewRuleOptionsMock.mockReset();
 		createRuleMock.mockReset();
+		discardNewRuleMock.mockReset();
 		fetchNewRuleOptionsMock.mockResolvedValue({
 			recommendations: [],
 			triggerIngredients: [],
@@ -246,7 +257,7 @@ describe('RulesPage', () => {
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
 	});
 
-	it('renders a new rule as a green row with a pending badge and no deactivate or revert', async () => {
+	it('renders a new rule as a green row with a pending badge, a discard action and no deactivate or revert', async () => {
 		fetchRulesMock.mockResolvedValue([NEW_RULE]);
 
 		render(<RulesPage />);
@@ -254,9 +265,44 @@ describe('RulesPage', () => {
 		const row = (await screen.findByText('seasoning')).closest('tr');
 		expect(row?.className).toContain('bg-success');
 		expect(screen.queryByText('rules.pendingBadge')).not.toBeNull();
+		expect(screen.queryByText('rules.discard')).not.toBeNull();
 		expect(screen.queryByText('rules.deactivate')).toBeNull();
 		expect(screen.queryByText('rules.activate')).toBeNull();
 		expect(screen.queryByText('rules.revert')).toBeNull();
+	});
+
+	it('discards an unpublished new rule against its base version and refreshes the grid', async () => {
+		fetchRulesMock.mockResolvedValueOnce([NEW_RULE]).mockResolvedValueOnce([]);
+		discardNewRuleMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByText('rules.discard'));
+
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+		expect(discardNewRuleMock).toHaveBeenCalledWith('n1', 1);
+		await waitFor(() => expect(screen.queryByText('rules.pendingBadge')).toBeNull());
+	});
+
+	it('warns and refreshes the grid when a discard is rejected as stale', async () => {
+		fetchRulesMock.mockResolvedValue([NEW_RULE]);
+		discardNewRuleMock.mockRejectedValue(new ApiError(409, 'conflict'));
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByText('rules.discard'));
+
+		expect(await screen.findByText('rules.staleReload')).not.toBeNull();
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('offers deactivate but not discard on a published rule', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+
+		render(<RulesPage />);
+
+		await screen.findByText('rules.deactivate');
+		expect(screen.queryByText('rules.discard')).toBeNull();
 	});
 
 	it('blocks adding a rule whose business key already exists', async () => {
