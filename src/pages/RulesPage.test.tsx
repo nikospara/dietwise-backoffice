@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/client';
 import {
@@ -11,14 +11,21 @@ import {
 	fetchNewRuleOptions,
 	fetchRationaleTranslations,
 	fetchRoleOrTechnique,
+	fetchRoleOrTechniqueTranslations,
 	fetchRules,
 	fetchTriggerIngredient,
+	fetchTriggerIngredientTranslations,
 	type Language,
+	type ReferenceDetails,
 	revertRationale,
 	revertRationaleTranslation,
+	revertRoleOrTechniqueTranslation,
+	revertTriggerIngredientTranslation,
 	setActive,
 	stageRationale,
 	stageRationaleTranslation,
+	stageRoleOrTechniqueTranslation,
+	stageTriggerIngredientTranslation,
 	type Rule,
 	type TranslationState,
 } from '@/api/rules';
@@ -41,6 +48,12 @@ vi.mock('@/api/rules', () => ({
 	fetchRationaleTranslations: vi.fn(),
 	stageRationaleTranslation: vi.fn(),
 	revertRationaleTranslation: vi.fn(),
+	fetchTriggerIngredientTranslations: vi.fn(),
+	fetchRoleOrTechniqueTranslations: vi.fn(),
+	stageTriggerIngredientTranslation: vi.fn(),
+	revertTriggerIngredientTranslation: vi.fn(),
+	stageRoleOrTechniqueTranslation: vi.fn(),
+	revertRoleOrTechniqueTranslation: vi.fn(),
 	LANGUAGES: ['EL', 'LT', 'NL'],
 }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
@@ -61,12 +74,23 @@ const editRoleOrTechniqueMock = vi.mocked(editRoleOrTechnique);
 const fetchRationaleTranslationsMock = vi.mocked(fetchRationaleTranslations);
 const stageRationaleTranslationMock = vi.mocked(stageRationaleTranslation);
 const revertRationaleTranslationMock = vi.mocked(revertRationaleTranslation);
+const fetchTriggerIngredientTranslationsMock = vi.mocked(fetchTriggerIngredientTranslations);
+const fetchRoleOrTechniqueTranslationsMock = vi.mocked(fetchRoleOrTechniqueTranslations);
+const stageTriggerIngredientTranslationMock = vi.mocked(stageTriggerIngredientTranslation);
+const revertTriggerIngredientTranslationMock = vi.mocked(revertTriggerIngredientTranslation);
+const stageRoleOrTechniqueTranslationMock = vi.mocked(stageRoleOrTechniqueTranslation);
+const revertRoleOrTechniqueTranslationMock = vi.mocked(revertRoleOrTechniqueTranslation);
 
 const NO_TRANSLATIONS: Record<Language, TranslationState> = { EL: 'MISSING', LT: 'MISSING', NL: 'MISSING' };
 const NO_STAGED_TRANSLATIONS = {
 	EL: { text: null, version: 0 },
 	LT: { text: null, version: 0 },
 	NL: { text: null, version: 0 },
+};
+const NO_REFERENCE_TRANSLATIONS: Record<Language, ReferenceDetails> = {
+	EL: { name: null, explanationForLlm: null, version: 0 },
+	LT: { name: null, explanationForLlm: null, version: 0 },
+	NL: { name: null, explanationForLlm: null, version: 0 },
 };
 
 const OPTIONS = {
@@ -87,6 +111,8 @@ const NEW_RULE: Rule = {
 	changeState: 'NEW',
 	changedFields: [],
 	rationaleTranslations: NO_TRANSLATIONS,
+	triggerIngredientTranslations: NO_TRANSLATIONS,
+	roleOrTechniqueTranslations: NO_TRANSLATIONS,
 	version: 1,
 };
 
@@ -102,6 +128,8 @@ const UNCHANGED_RULE: Rule = {
 	changeState: 'UNCHANGED',
 	changedFields: [],
 	rationaleTranslations: NO_TRANSLATIONS,
+	triggerIngredientTranslations: NO_TRANSLATIONS,
+	roleOrTechniqueTranslations: NO_TRANSLATIONS,
 	version: 0,
 };
 
@@ -117,6 +145,8 @@ const ROLELESS_RULE: Rule = {
 	changeState: 'UNCHANGED',
 	changedFields: [],
 	rationaleTranslations: NO_TRANSLATIONS,
+	triggerIngredientTranslations: NO_TRANSLATIONS,
+	roleOrTechniqueTranslations: NO_TRANSLATIONS,
 	version: 0,
 };
 
@@ -147,11 +177,19 @@ describe('RulesPage', () => {
 		fetchRationaleTranslationsMock.mockReset();
 		stageRationaleTranslationMock.mockReset();
 		revertRationaleTranslationMock.mockReset();
+		fetchTriggerIngredientTranslationsMock.mockReset();
+		fetchRoleOrTechniqueTranslationsMock.mockReset();
+		stageTriggerIngredientTranslationMock.mockReset();
+		revertTriggerIngredientTranslationMock.mockReset();
+		stageRoleOrTechniqueTranslationMock.mockReset();
+		revertRoleOrTechniqueTranslationMock.mockReset();
 		fetchNewRuleOptionsMock.mockResolvedValue({
 			recommendations: [],
 			triggerIngredients: [],
 			rolesOrTechniques: [],
 		});
+		fetchTriggerIngredientTranslationsMock.mockResolvedValue(NO_REFERENCE_TRANSLATIONS);
+		fetchRoleOrTechniqueTranslationsMock.mockResolvedValue(NO_REFERENCE_TRANSLATIONS);
 	});
 
 	it('renders one row per rule, blanks a missing role, and makes the rationale editable', async () => {
@@ -508,10 +546,67 @@ describe('RulesPage', () => {
 
 		render(<RulesPage />);
 
-		await screen.findByLabelText('rules.rationaleEditLabel');
-		expect(screen.getByText('EL').className).toContain('badge-warning');
-		expect(screen.getByText('LT').className).toContain('badge-ghost');
-		expect(screen.getByText('NL').className).toContain('badge-success');
+		const rationaleCell = (await screen.findByLabelText('rules.rationaleEditLabel')).closest('td') as HTMLElement;
+		expect(within(rationaleCell).getByText('EL').className).toContain('badge-warning');
+		expect(within(rationaleCell).getByText('LT').className).toContain('badge-ghost');
+		expect(within(rationaleCell).getByText('NL').className).toContain('badge-success');
+	});
+
+	it('shows per-language trigger and role translation completeness chips styled by state', async () => {
+		fetchRulesMock.mockResolvedValue([
+			{
+				...UNCHANGED_RULE,
+				triggerIngredientTranslations: { EL: 'PRESENT', LT: 'STAGED', NL: 'MISSING' },
+				roleOrTechniqueTranslations: { EL: 'MISSING', LT: 'MISSING', NL: 'PRESENT' },
+			},
+		]);
+
+		render(<RulesPage />);
+
+		const triggerCell = (await screen.findByText('Beef')).closest('td') as HTMLElement;
+		expect(within(triggerCell).getByText('EL').className).toContain('badge-success');
+		expect(within(triggerCell).getByText('LT').className).toContain('badge-warning');
+		expect(within(triggerCell).getByText('NL').className).toContain('badge-ghost');
+		const roleCell = screen.getByText('minced in sauce').closest('td') as HTMLElement;
+		expect(within(roleCell).getByText('NL').className).toContain('badge-success');
+	});
+
+	it('stages a trigger ingredient translation from the edit dialog against its version', async () => {
+		fetchRulesMock.mockResolvedValueOnce([UNCHANGED_RULE]).mockResolvedValueOnce([UNCHANGED_RULE]);
+		fetchTriggerIngredientMock.mockResolvedValue({ name: 'Beef', explanationForLlm: 'Red meat.', version: 0 });
+		fetchTriggerIngredientTranslationsMock.mockResolvedValue(NO_REFERENCE_TRANSLATIONS);
+		stageTriggerIngredientTranslationMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerIngredient' }));
+		const greekName = (await screen.findByLabelText('EL rules.editName')) as HTMLInputElement;
+		fireEvent.change(greekName, { target: { value: 'Βόειο' } });
+		fireEvent.click(screen.getAllByText('rules.translationSave')[0]);
+
+		await waitFor(() =>
+			expect(stageTriggerIngredientTranslationMock).toHaveBeenCalledWith('tb', 'EL', 'Βόειο', null, 0),
+		);
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('reverts a staged role or technique translation from the edit dialog', async () => {
+		fetchRulesMock.mockResolvedValueOnce([UNCHANGED_RULE]).mockResolvedValueOnce([UNCHANGED_RULE]);
+		fetchRoleOrTechniqueMock.mockResolvedValue({ name: 'minced in sauce', explanationForLlm: null, version: 0 });
+		fetchRoleOrTechniqueTranslationsMock.mockResolvedValue({
+			EL: { name: 'ανάμεικτο', explanationForLlm: null, version: 4 },
+			LT: { name: null, explanationForLlm: null, version: 0 },
+			NL: { name: null, explanationForLlm: null, version: 0 },
+		});
+		revertRoleOrTechniqueTranslationMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.editRoleOrTechnique' }));
+		fireEvent.click(await screen.findByText('rules.translationRevert'));
+
+		await waitFor(() => expect(revertRoleOrTechniqueTranslationMock).toHaveBeenCalledWith('rm', 'EL', 4));
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
 	});
 
 	it('opens the rationale translations dialog and stages a translation against its base version', async () => {

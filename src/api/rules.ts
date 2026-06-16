@@ -26,9 +26,10 @@ export interface ReferenceOption {
 	name: string;
 }
 
-/** The editable details of a shared reference entity (a Trigger Ingredient or Role or Technique). */
+/** The editable details of a shared reference entity (a Trigger Ingredient or Role or Technique). `name` is null only
+ * for a not-yet-translated language in the per-language translation payload; the English details always carry a name. */
 export interface ReferenceDetails {
-	name: string;
+	name: string | null;
 	explanationForLlm: string | null;
 	/** Working Copy version to base the next edit on (0 when no Staged Change exists yet). */
 	version: number;
@@ -58,6 +59,10 @@ export interface Rule {
 	changedFields: RuleField[];
 	/** Completeness of the rationale translation in each non-English language. */
 	rationaleTranslations: Record<Language, TranslationState>;
+	/** Completeness of the Trigger Ingredient's translation in each non-English language. */
+	triggerIngredientTranslations: Record<Language, TranslationState>;
+	/** Completeness of the Role or Technique's translation in each non-English language; empty when there is no Role. */
+	roleOrTechniqueTranslations: Record<Language, TranslationState>;
 	/** Working Copy version to base the next edit on. */
 	version: number;
 }
@@ -176,6 +181,76 @@ export function editRoleOrTechnique(
 	return apiFetch<void>(`/rules/roles-or-techniques/${id}`, {
 		method: 'PUT',
 		body: JSON.stringify({ name, explanationForLlm, baseVersion }),
+	});
+}
+
+/**
+ * Fetches the effective translation of a shared Trigger Ingredient for each non-English language (master overlaid by any
+ * Staged Change) and the Working Copy version to base an edit on, to pre-fill the translations dialog.
+ */
+export function fetchTriggerIngredientTranslations(id: string): Promise<Record<Language, ReferenceDetails>> {
+	return apiFetch<Record<Language, ReferenceDetails>>(`/rules/trigger-ingredients/${id}/translations`);
+}
+
+/**
+ * Stages a Trigger Ingredient's name and explanation translation for one language in the Working Copy. A {@code null}
+ * value clears that field (falls back to English). Rejects with {@link ApiError} status 409 when the base version is stale.
+ */
+export function stageTriggerIngredientTranslation(
+	id: string,
+	lang: Language,
+	name: string | null,
+	explanationForLlm: string | null,
+	baseVersion: number,
+): Promise<void> {
+	return apiFetch<void>(`/rules/trigger-ingredients/${id}/translations/${lang}`, {
+		method: 'PUT',
+		body: JSON.stringify({ name, explanationForLlm, baseVersion }),
+	});
+}
+
+/**
+ * Reverts a Trigger Ingredient's staged translation for one language, restoring the published master translation.
+ * Rejects with {@link ApiError} status 409 when the base version is stale.
+ */
+export function revertTriggerIngredientTranslation(id: string, lang: Language, baseVersion: number): Promise<void> {
+	return apiFetch<void>(`/rules/trigger-ingredients/${id}/translations/${lang}?baseVersion=${baseVersion}`, {
+		method: 'DELETE',
+	});
+}
+
+/**
+ * Fetches the effective translation of a shared Role or Technique for each non-English language (master overlaid by any
+ * Staged Change) and the Working Copy version to base an edit on, to pre-fill the translations dialog.
+ */
+export function fetchRoleOrTechniqueTranslations(id: string): Promise<Record<Language, ReferenceDetails>> {
+	return apiFetch<Record<Language, ReferenceDetails>>(`/rules/roles-or-techniques/${id}/translations`);
+}
+
+/**
+ * Stages a Role or Technique's name and explanation translation for one language in the Working Copy. A {@code null}
+ * value clears that field (falls back to English). Rejects with {@link ApiError} status 409 when the base version is stale.
+ */
+export function stageRoleOrTechniqueTranslation(
+	id: string,
+	lang: Language,
+	name: string | null,
+	explanationForLlm: string | null,
+	baseVersion: number,
+): Promise<void> {
+	return apiFetch<void>(`/rules/roles-or-techniques/${id}/translations/${lang}`, {
+		method: 'PUT',
+		body: JSON.stringify({ name, explanationForLlm, baseVersion }),
+	});
+}
+
+/**
+ * Reverts a Role or Technique's staged translation for one language, restoring the published master translation.
+ * Rejects with {@link ApiError} status 409 when the base version is stale.
+ */
+export function revertRoleOrTechniqueTranslation(id: string, lang: Language, baseVersion: number): Promise<void> {
+	return apiFetch<void>(`/rules/roles-or-techniques/${id}/translations/${lang}?baseVersion=${baseVersion}`, {
+		method: 'DELETE',
 	});
 }
 
