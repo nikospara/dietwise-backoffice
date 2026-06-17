@@ -74,7 +74,7 @@
 		"addTemplate": "Add a template:",
 		"addTemplateLabel": "Add a suggestion template",
 		"selectAlternative": "Choose an alternative ingredient…",
-		"templateAlreadyExists": "This rule already has a template for that alternative — shown below.",
+		"templateAlreadyExists": "This rule already has a template for that alternative!",
 		"discardTemplate": "Discard template"
 	},
 	"home": {
