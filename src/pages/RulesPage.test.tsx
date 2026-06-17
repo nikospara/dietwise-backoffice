@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/client';
 import {
 	addSuggestionTemplate,
+	createAlternativeIngredient,
 	createRoleOrTechnique,
 	createRule,
 	createTriggerIngredient,
@@ -51,6 +52,7 @@ vi.mock('@/api/rules', () => ({
 	addSuggestionTemplate: vi.fn(),
 	discardSuggestionTemplate: vi.fn(),
 	fetchAlternativeIngredientOptions: vi.fn(),
+	createAlternativeIngredient: vi.fn(),
 	stageRationale: vi.fn(),
 	revertRationale: vi.fn(),
 	setActive: vi.fn(),
@@ -89,6 +91,7 @@ const fetchSuggestionTemplatesMock = vi.mocked(fetchSuggestionTemplates);
 const addSuggestionTemplateMock = vi.mocked(addSuggestionTemplate);
 const discardSuggestionTemplateMock = vi.mocked(discardSuggestionTemplate);
 const fetchAlternativeIngredientOptionsMock = vi.mocked(fetchAlternativeIngredientOptions);
+const createAlternativeIngredientMock = vi.mocked(createAlternativeIngredient);
 const stageRationaleMock = vi.mocked(stageRationale);
 const revertRationaleMock = vi.mocked(revertRationale);
 const setActiveMock = vi.mocked(setActive);
@@ -235,6 +238,7 @@ describe('RulesPage', () => {
 		addSuggestionTemplateMock.mockReset();
 		discardSuggestionTemplateMock.mockReset();
 		fetchAlternativeIngredientOptionsMock.mockReset();
+		createAlternativeIngredientMock.mockReset();
 		stageRationaleMock.mockReset();
 		revertRationaleMock.mockReset();
 		setActiveMock.mockReset();
@@ -1202,5 +1206,47 @@ describe('RulesPage', () => {
 		);
 		expect(screen.queryByText('rules.revert')).toBeNull();
 		expect(input.className).not.toContain('bg-warning');
+	});
+
+	it('creates a new alternative ingredient from the add combobox and adds a template for it', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([]);
+		fetchAlternativeIngredientOptionsMock
+			.mockResolvedValueOnce(ALTERNATIVE_OPTIONS)
+			.mockResolvedValueOnce([...ALTERNATIVE_OPTIONS, { id: 'a3', name: 'Aquafaba' }]);
+		createAlternativeIngredientMock.mockResolvedValue({ id: 'a3', name: 'Aquafaba' });
+		addSuggestionTemplateMock.mockResolvedValue({ templateId: 's-new', created: true });
+
+		render(<RulesPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+
+		const addInput = await screen.findByLabelText('rules.addTemplateLabel');
+		fireEvent.focus(addInput);
+		fireEvent.change(addInput, { target: { value: 'Aquafaba' } });
+		fireEvent.mouseDown(await screen.findByRole('button', { name: 'rules.addOption' }));
+
+		await waitFor(() => expect(createAlternativeIngredientMock).toHaveBeenCalledWith('Aquafaba'));
+		await waitFor(() => expect(addSuggestionTemplateMock).toHaveBeenCalledWith('1', 'a3'));
+	});
+
+	it('falls back to the existing alternative ingredient when the create races a duplicate name', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([]);
+		fetchAlternativeIngredientOptionsMock
+			.mockResolvedValueOnce(ALTERNATIVE_OPTIONS)
+			.mockResolvedValueOnce([...ALTERNATIVE_OPTIONS, { id: 'a3', name: 'Aquafaba' }]);
+		createAlternativeIngredientMock.mockRejectedValue(new ApiError(409, 'duplicate'));
+		addSuggestionTemplateMock.mockResolvedValue({ templateId: 's-new', created: true });
+
+		render(<RulesPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+
+		const addInput = await screen.findByLabelText('rules.addTemplateLabel');
+		fireEvent.focus(addInput);
+		fireEvent.change(addInput, { target: { value: 'Aquafaba' } });
+		fireEvent.mouseDown(await screen.findByRole('button', { name: 'rules.addOption' }));
+
+		await waitFor(() => expect(createAlternativeIngredientMock).toHaveBeenCalledWith('Aquafaba'));
+		await waitFor(() => expect(addSuggestionTemplateMock).toHaveBeenCalledWith('1', 'a3'));
 	});
 });

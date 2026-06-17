@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiError } from '@/api/client';
 import {
 	addSuggestionTemplate,
+	createAlternativeIngredient,
 	createRoleOrTechnique,
 	createRule,
 	createTriggerIngredient,
@@ -257,6 +258,26 @@ export function RulesPage() {
 				setConflict(true);
 				reload();
 				reloadTemplates(ruleId);
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
+	const commitCreateAlternative = async (ruleId: string, name: string) => {
+		setAddNoticeRuleId(null);
+		try {
+			const created = await createAlternativeIngredient(name);
+			setAlternativeOptions(await fetchAlternativeIngredientOptions());
+			await commitAddTemplate(ruleId, created.id);
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				const refreshed = await fetchAlternativeIngredientOptions();
+				setAlternativeOptions(refreshed);
+				const match = refreshed.find((option) => option.name.toLowerCase() === name.toLowerCase());
+				if (match) {
+					await commitAddTemplate(ruleId, match.id);
+				}
 			} else {
 				setFailed(true);
 			}
@@ -542,6 +563,8 @@ export function RulesPage() {
 							}}
 							label={t('rules.addTemplateLabel')}
 							placeholder={t('rules.selectAlternative')}
+							onCreate={(name) => commitCreateAlternative(ruleId, name)}
+							createLabel={(name) => t('rules.addOption', { name })}
 						/>
 					</div>
 				</div>

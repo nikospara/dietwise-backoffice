@@ -247,9 +247,21 @@ export function fetchNewRuleOptions(): Promise<NewRuleOptions> {
 	return apiFetch<NewRuleOptions>('/rules/new-rule-options');
 }
 
-/** Fetches the published AlternativeIngredients an editor can add to a Rule, as id and name, sorted by name. */
+/** Fetches the AlternativeIngredients an editor can add to a Rule (master overlaid by the Working Copy), as id and name, sorted by name. */
 export function fetchAlternativeIngredientOptions(): Promise<ReferenceOption[]> {
 	return apiFetch<ReferenceOption[]>('/rules/alternative-ingredients');
+}
+
+/**
+ * Stages a brand-new AlternativeIngredient in the Working Copy with name alone, resolving with its id and name, so it
+ * can be chosen for the template being added. Rejects with {@link ApiError} status 409 when one with the same name
+ * already exists.
+ */
+export function createAlternativeIngredient(name: string): Promise<ReferenceOption> {
+	return apiFetch<ReferenceOption>('/rules/alternative-ingredients', {
+		method: 'POST',
+		body: JSON.stringify({ name }),
+	});
 }
 
 /**
