@@ -1,10 +1,5 @@
-@import "tailwindcss";
-@plugin "daisyui";
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-@tailwind variants;
+@import 'tailwindcss';
+@plugin 'daisyui';
 
 @layer base {
 	:root {
@@ -25,15 +20,15 @@
 	}
 
 	h1 {
-		@apply text-xl font-bold mt-[20px] first:mt-0 mb-[10px] last:mb-0;
+		@apply mb-[10px] mt-[20px] text-xl font-bold first:mt-0 last:mb-0;
 	}
 
 	h2 {
-		@apply text-lg font-bold mt-[15px] first:mt-0 mb-[10px] last:mb-0;
+		@apply mb-[10px] mt-[15px] text-lg font-bold first:mt-0 last:mb-0;
 	}
 
 	h3 {
-		@apply text-base font-bold mt-[15px] first:mt-0 mb-[10px] last:mb-0;
+		@apply mb-[10px] mt-[15px] text-base font-bold first:mt-0 last:mb-0;
 	}
 }
 
