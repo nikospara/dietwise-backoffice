@@ -9,9 +9,12 @@ import {
 	createTriggerIngredient,
 	discardNewRule,
 	discardSuggestionTemplate,
+	editAlternativeIngredient,
 	editRoleOrTechnique,
 	editTriggerIngredient,
+	fetchAlternativeIngredient,
 	fetchAlternativeIngredientOptions,
+	fetchAlternativeIngredientTranslations,
 	fetchNewRuleOptions,
 	fetchRationaleTranslations,
 	fetchRoleOrTechnique,
@@ -21,8 +24,11 @@ import {
 	fetchTemplateFieldTranslations,
 	fetchTriggerIngredient,
 	fetchTriggerIngredientTranslations,
+	type AlternativeIngredientDetails,
 	type Language,
 	type ReferenceDetails,
+	revertAlternativeIngredient,
+	revertAlternativeIngredientTranslation,
 	revertRationale,
 	revertRationaleTranslation,
 	revertRoleOrTechnique,
@@ -33,6 +39,7 @@ import {
 	revertTriggerIngredientTranslation,
 	setActive,
 	setActiveSuggestionTemplate,
+	stageAlternativeIngredientTranslation,
 	stageRationale,
 	stageRationaleTranslation,
 	stageRoleOrTechniqueTranslation,
@@ -67,6 +74,12 @@ vi.mock('@/api/rules', () => ({
 	editRoleOrTechnique: vi.fn(),
 	revertTriggerIngredient: vi.fn(),
 	revertRoleOrTechnique: vi.fn(),
+	fetchAlternativeIngredient: vi.fn(),
+	editAlternativeIngredient: vi.fn(),
+	revertAlternativeIngredient: vi.fn(),
+	fetchAlternativeIngredientTranslations: vi.fn(),
+	stageAlternativeIngredientTranslation: vi.fn(),
+	revertAlternativeIngredientTranslation: vi.fn(),
 	stageSuggestionTemplateField: vi.fn(),
 	revertSuggestionTemplateField: vi.fn(),
 	setActiveSuggestionTemplate: vi.fn(),
@@ -106,6 +119,12 @@ const editTriggerIngredientMock = vi.mocked(editTriggerIngredient);
 const editRoleOrTechniqueMock = vi.mocked(editRoleOrTechnique);
 const revertTriggerIngredientMock = vi.mocked(revertTriggerIngredient);
 const revertRoleOrTechniqueMock = vi.mocked(revertRoleOrTechnique);
+const fetchAlternativeIngredientMock = vi.mocked(fetchAlternativeIngredient);
+const editAlternativeIngredientMock = vi.mocked(editAlternativeIngredient);
+const revertAlternativeIngredientMock = vi.mocked(revertAlternativeIngredient);
+const fetchAlternativeIngredientTranslationsMock = vi.mocked(fetchAlternativeIngredientTranslations);
+const stageAlternativeIngredientTranslationMock = vi.mocked(stageAlternativeIngredientTranslation);
+const revertAlternativeIngredientTranslationMock = vi.mocked(revertAlternativeIngredientTranslation);
 const fetchRationaleTranslationsMock = vi.mocked(fetchRationaleTranslations);
 const stageRationaleTranslationMock = vi.mocked(stageRationaleTranslation);
 const revertRationaleTranslationMock = vi.mocked(revertRationaleTranslation);
@@ -136,12 +155,14 @@ function template(
 ): SuggestionTemplate {
 	return {
 		id,
+		alternativeIngredientId: `${id}-alt`,
 		alternativeIngredientName,
 		restriction: null,
 		equivalence: null,
 		techniqueNotes: null,
 		changedFields: [],
 		translations: NO_TEMPLATE_TRANSLATIONS,
+		alternativeIngredientTranslations: NO_TRANSLATIONS,
 		active: true,
 		activeChanged: false,
 		published: true,
@@ -163,6 +184,13 @@ const NO_REFERENCE_TRANSLATIONS: Record<Language, ReferenceDetails> = {
 	EL: { name: null, explanationForLlm: null, version: 0, published: false },
 	LT: { name: null, explanationForLlm: null, version: 0, published: false },
 	NL: { name: null, explanationForLlm: null, version: 0, published: false },
+};
+const ALTERNATIVE_DETAILS: AlternativeIngredientDetails = {
+	name: 'Smoked tofu cubes',
+	explanationForLlm: 'Pressed and smoked.',
+	version: 2,
+	published: true,
+	referenceCount: 3,
 };
 
 const OPTIONS = {
@@ -253,6 +281,12 @@ describe('RulesPage', () => {
 		editRoleOrTechniqueMock.mockReset();
 		revertTriggerIngredientMock.mockReset();
 		revertRoleOrTechniqueMock.mockReset();
+		fetchAlternativeIngredientMock.mockReset();
+		editAlternativeIngredientMock.mockReset();
+		revertAlternativeIngredientMock.mockReset();
+		fetchAlternativeIngredientTranslationsMock.mockReset();
+		stageAlternativeIngredientTranslationMock.mockReset();
+		revertAlternativeIngredientTranslationMock.mockReset();
 		fetchRationaleTranslationsMock.mockReset();
 		stageRationaleTranslationMock.mockReset();
 		revertRationaleTranslationMock.mockReset();
@@ -277,6 +311,8 @@ describe('RulesPage', () => {
 		fetchRoleOrTechniqueTranslationsMock.mockResolvedValue(NO_REFERENCE_TRANSLATIONS);
 		fetchTemplateFieldTranslationsMock.mockResolvedValue(NO_STAGED_TRANSLATIONS);
 		fetchAlternativeIngredientOptionsMock.mockResolvedValue(ALTERNATIVE_OPTIONS);
+		fetchAlternativeIngredientMock.mockResolvedValue(ALTERNATIVE_DETAILS);
+		fetchAlternativeIngredientTranslationsMock.mockResolvedValue(NO_REFERENCE_TRANSLATIONS);
 	});
 
 	it('renders one row per rule, blanks a missing role, and makes the rationale editable', async () => {
@@ -1248,5 +1284,95 @@ describe('RulesPage', () => {
 
 		await waitFor(() => expect(createAlternativeIngredientMock).toHaveBeenCalledWith('Aquafaba'));
 		await waitFor(() => expect(addSuggestionTemplateMock).toHaveBeenCalledWith('1', 'a3'));
+	});
+
+	it('renders the alternative ingredient translation chips on a template card', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			template('s1', 'Brown lentils (cooked)', {
+				alternativeIngredientTranslations: { EL: 'PRESENT', LT: 'MISSING', NL: 'STAGED' },
+			}),
+		]);
+
+		render(<RulesPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+
+		const chips = await screen.findByRole('button', {
+			name: 'rules.editAlternativeTranslations Brown lentils (cooked)',
+		});
+		expect(within(chips).getAllByText('EL')[0].parentElement?.className).toContain('badge-success');
+		expect(within(chips).getAllByText('NL')[0].parentElement?.className).toContain('badge-warning');
+		expect(within(chips).getAllByText('LT')[0].parentElement?.className).toContain('badge-ghost');
+	});
+
+	it('edits a shared alternative ingredient from a template card and warns about the blast radius', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([template('s1', 'Brown lentils (cooked)')]);
+		editAlternativeIngredientMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+		fireEvent.click(
+			await screen.findByRole('button', { name: 'rules.editAlternativeIngredient Brown lentils (cooked)' }),
+		);
+
+		const nameInput = (await screen.findByLabelText('rules.editName')) as HTMLInputElement;
+		expect(fetchAlternativeIngredientMock).toHaveBeenCalledWith('s1-alt');
+		expect(nameInput.value).toBe('Smoked tofu cubes');
+		expect(screen.getByText('rules.editBlastRadius')).toBeTruthy();
+		fireEvent.change(nameInput, { target: { value: 'Smoked tofu' } });
+		fireEvent.click(screen.getByText('rules.editSave'));
+
+		await waitFor(() =>
+			expect(editAlternativeIngredientMock).toHaveBeenCalledWith(
+				's1-alt',
+				'Smoked tofu',
+				'Pressed and smoked.',
+				2,
+			),
+		);
+	});
+
+	it('reverts a shared alternative ingredient edit from the edit dialog against its version', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([template('s1', 'Brown lentils (cooked)')]);
+		revertAlternativeIngredientMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+		fireEvent.click(
+			await screen.findByRole('button', { name: 'rules.editAlternativeIngredient Brown lentils (cooked)' }),
+		);
+		await screen.findByLabelText('rules.editName');
+		fireEvent.click(screen.getByText('rules.editRevert'));
+
+		await waitFor(() => expect(revertAlternativeIngredientMock).toHaveBeenCalledWith('s1-alt', 2));
+	});
+
+	it('stages an alternative ingredient translation from the template card', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([template('s1', 'Brown lentils (cooked)')]);
+		stageAlternativeIngredientTranslationMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+		fireEvent.click(
+			await screen.findByRole('button', { name: 'rules.editAlternativeTranslations Brown lentils (cooked)' }),
+		);
+
+		const elName = (await screen.findByLabelText('EL rules.editName')) as HTMLInputElement;
+		expect(fetchAlternativeIngredientTranslationsMock).toHaveBeenCalledWith('s1-alt');
+		fireEvent.change(elName, { target: { value: 'Καπνιστό τόφου' } });
+		fireEvent.click(screen.getAllByText('rules.translationSave')[0]);
+
+		await waitFor(() =>
+			expect(stageAlternativeIngredientTranslationMock).toHaveBeenCalledWith(
+				's1-alt',
+				'EL',
+				'Καπνιστό τόφου',
+				null,
+				0,
+			),
+		);
 	});
 });

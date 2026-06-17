@@ -52,6 +52,8 @@
 		"editTranslations": "Edit translations",
 		"editTriggerTranslations": "Edit Trigger Ingredient translations",
 		"editRoleTranslations": "Edit Role or Technique translations",
+		"editAlternativeIngredient": "Edit Alternative Ingredient",
+		"editAlternativeTranslations": "Edit Alternative Ingredient translations",
 		"editTemplateTranslations": "Edit translations of",
 		"translationsTitle": "Rationale translations",
 		"translationsEnglish": "English (master)",

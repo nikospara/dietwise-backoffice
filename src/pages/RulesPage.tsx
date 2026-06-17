@@ -9,9 +9,12 @@ import {
 	createTriggerIngredient,
 	discardNewRule,
 	discardSuggestionTemplate,
+	editAlternativeIngredient,
 	editRoleOrTechnique,
 	editTriggerIngredient,
+	fetchAlternativeIngredient,
 	fetchAlternativeIngredientOptions,
+	fetchAlternativeIngredientTranslations,
 	fetchNewRuleOptions,
 	fetchRationaleTranslations,
 	fetchRoleOrTechnique,
@@ -23,6 +26,8 @@ import {
 	fetchTriggerIngredientTranslations,
 	type Language,
 	LANGUAGES,
+	revertAlternativeIngredient,
+	revertAlternativeIngredientTranslation,
 	revertRationale,
 	revertRationaleTranslation,
 	revertRoleOrTechnique,
@@ -33,12 +38,14 @@ import {
 	revertTriggerIngredientTranslation,
 	setActive,
 	setActiveSuggestionTemplate,
+	stageAlternativeIngredientTranslation,
 	stageRationale,
 	stageRationaleTranslation,
 	stageRoleOrTechniqueTranslation,
 	stageSuggestionTemplateField,
 	stageTemplateFieldTranslation,
 	stageTriggerIngredientTranslation,
+	type AlternativeIngredientDetails,
 	type NewRuleOptions,
 	type ReferenceOption,
 	type Rule,
@@ -98,7 +105,14 @@ export function RulesPage() {
 	const [newTriggerIngredientId, setNewTriggerIngredientId] = useState<string | null>(null);
 	const [newRoleOrTechniqueId, setNewRoleOrTechniqueId] = useState<string | null>(null);
 	const [editing, setEditing] = useState<EditTarget | null>(null);
+	const [editingAlternative, setEditingAlternative] = useState<{
+		id: string;
+		details: AlternativeIngredientDetails;
+	} | null>(null);
 	const [translatingReference, setTranslatingReference] = useState<ReferenceTranslationTarget | null>(null);
+	const [translatingAlternative, setTranslatingAlternative] = useState<{ id: string; englishName: string } | null>(
+		null,
+	);
 	const [translating, setTranslating] = useState<TranslationTarget | null>(null);
 	const [translatingTemplateField, setTranslatingTemplateField] = useState<TemplateTranslationTarget | null>(null);
 	const [expandedRuleIds, setExpandedRuleIds] = useState<Set<string>>(new Set());
@@ -509,7 +523,29 @@ export function RulesPage() {
 							className={`rounded border p-2 ${template.active ? 'border-base-300 bg-base-100' : 'border-error bg-error/10'}`}
 						>
 							<div className="flex items-center justify-between gap-2">
-								<span className="font-medium">{template.alternativeIngredientName}</span>
+								<div className="flex min-w-0 flex-col gap-1">
+									<button
+										type="button"
+										className="link link-hover text-left font-medium"
+										aria-label={`${t('rules.editAlternativeIngredient')} ${template.alternativeIngredientName}`}
+										onClick={() => openEditAlternative(template.alternativeIngredientId)}
+									>
+										{template.alternativeIngredientName}
+									</button>
+									<button
+										type="button"
+										className="flex items-center gap-1 self-start"
+										aria-label={`${t('rules.editAlternativeTranslations')} ${template.alternativeIngredientName}`}
+										onClick={() =>
+											setTranslatingAlternative({
+												id: template.alternativeIngredientId,
+												englishName: template.alternativeIngredientName,
+											})
+										}
+									>
+										{translationChips(template.alternativeIngredientTranslations)}
+									</button>
+								</div>
 								<div className="flex items-center gap-2">
 									{!template.active ? (
 										<span className="badge badge-error badge-sm">
@@ -690,6 +726,73 @@ export function RulesPage() {
 		await runAndReload(() => revert(target.id, lang, baseVersion));
 	};
 
+	const openEditAlternative = async (id: string) => {
+		try {
+			const details = await fetchAlternativeIngredient(id);
+			setEditingAlternative({ id, details });
+		} catch {
+			setFailed(true);
+		}
+	};
+
+	// A shared AlternativeIngredient appears on template cards across Rules and lights every referencing Rule's
+	// Suggestions flag, so refresh the grid, the add-combobox options, and every open panel.
+	const reloadAfterAlternativeChange = () => {
+		reload();
+		fetchAlternativeIngredientOptions()
+			.then(setAlternativeOptions)
+			.catch(() => undefined);
+		expandedRuleIds.forEach((id) => reloadTemplates(id));
+	};
+
+	const commitAlternativeChange = async (action: () => Promise<unknown>) => {
+		try {
+			await action();
+			setConflict(false);
+			reloadAfterAlternativeChange();
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reloadAfterAlternativeChange();
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
+	const commitEditAlternative = async (
+		id: string,
+		name: string,
+		explanationForLlm: string | null,
+		baseVersion: number,
+	) => {
+		setEditingAlternative(null);
+		await commitAlternativeChange(() => editAlternativeIngredient(id, name, explanationForLlm, baseVersion));
+	};
+
+	const commitRevertAlternative = async (id: string, baseVersion: number) => {
+		setEditingAlternative(null);
+		await commitAlternativeChange(() => revertAlternativeIngredient(id, baseVersion));
+	};
+
+	const commitStageAlternativeTranslation = async (
+		id: string,
+		lang: Language,
+		name: string | null,
+		explanationForLlm: string | null,
+		baseVersion: number,
+	) => {
+		setTranslatingAlternative(null);
+		await commitAlternativeChange(() =>
+			stageAlternativeIngredientTranslation(id, lang, name, explanationForLlm, baseVersion),
+		);
+	};
+
+	const commitRevertAlternativeTranslation = async (id: string, lang: Language, baseVersion: number) => {
+		setTranslatingAlternative(null);
+		await commitAlternativeChange(() => revertAlternativeIngredientTranslation(id, lang, baseVersion));
+	};
+
 	const commitStageTranslation = async (
 		ruleId: string,
 		lang: Language,
@@ -802,6 +905,45 @@ export function RulesPage() {
 				}
 				onRevert={(lang, baseVersion) => commitRevertReferenceTranslation(target, lang, baseVersion)}
 				onCancel={() => setTranslatingReference(null)}
+			/>
+		);
+	}
+
+	let alternativeEditDialog = null;
+	if (editingAlternative !== null) {
+		const target = editingAlternative;
+		alternativeEditDialog = (
+			<ReferenceEditDialog
+				referenceId={target.id}
+				title={t('rules.editAlternativeIngredient')}
+				affectedCount={target.details.referenceCount}
+				takenNames={(alternativeOptions ?? [])
+					.filter((option) => option.id !== target.id)
+					.map((option) => option.name.toLowerCase())}
+				loadDetails={() => Promise.resolve(target.details)}
+				onSubmit={(name, explanationForLlm, baseVersion) =>
+					commitEditAlternative(target.id, name, explanationForLlm, baseVersion)
+				}
+				onRevert={(baseVersion) => commitRevertAlternative(target.id, baseVersion)}
+				onCancel={() => setEditingAlternative(null)}
+			/>
+		);
+	}
+
+	let alternativeTranslationsDialog = null;
+	if (translatingAlternative !== null) {
+		const target = translatingAlternative;
+		alternativeTranslationsDialog = (
+			<ReferenceTranslationsDialog
+				referenceId={target.id}
+				title={t('rules.editAlternativeTranslations')}
+				englishName={target.englishName}
+				loadTranslations={fetchAlternativeIngredientTranslations}
+				onStage={(lang, name, explanationForLlm, baseVersion) =>
+					commitStageAlternativeTranslation(target.id, lang, name, explanationForLlm, baseVersion)
+				}
+				onRevert={(lang, baseVersion) => commitRevertAlternativeTranslation(target.id, lang, baseVersion)}
+				onCancel={() => setTranslatingAlternative(null)}
 			/>
 		);
 	}
@@ -1060,6 +1202,8 @@ export function RulesPage() {
 			</div>
 			{editDialog}
 			{referenceTranslationsDialog}
+			{alternativeEditDialog}
+			{alternativeTranslationsDialog}
 			{translationsDialog}
 			{templateTranslationsDialog}
 		</div>
