@@ -85,6 +85,10 @@ export interface SuggestionTemplate {
 	changedFields: TemplateField[];
 	/** Completeness of each English field's translation in each non-English language. */
 	translations: Record<TemplateField, Record<Language, TranslationState>>;
+	/** Effective active state (published master overlaid by any Staged Change); a deactivated template is skipped by recipe assessment. */
+	active: boolean;
+	/** Whether the effective active state differs from published master because of a staged Deactivate or Activate. */
+	activeChanged: boolean;
 	/** Working Copy version to base the next edit on (0 when the template has no Staged Change). */
 	version: number;
 }
@@ -149,6 +153,18 @@ export function revertSuggestionTemplateField(
 ): Promise<void> {
 	return apiFetch<void>(`/rules/suggestion-templates/${templateId}/${field}?baseVersion=${baseVersion}`, {
 		method: 'DELETE',
+	});
+}
+
+/**
+ * Stages a Suggestion Template's active state in the Working Copy, leaving published master untouched. Deactivating a
+ * published template, so recipe assessment stops offering that alternative, or reactivating a deactivated one, is a
+ * Staged Change. Rejects with {@link ApiError} status 409 when the base version is stale.
+ */
+export function setActiveSuggestionTemplate(templateId: string, active: boolean, baseVersion: number): Promise<void> {
+	return apiFetch<void>(`/rules/suggestion-templates/${templateId}/active`, {
+		method: 'PUT',
+		body: JSON.stringify({ active, baseVersion }),
 	});
 }
 

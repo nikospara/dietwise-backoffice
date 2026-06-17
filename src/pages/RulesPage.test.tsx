@@ -28,6 +28,7 @@ import {
 	revertTriggerIngredient,
 	revertTriggerIngredientTranslation,
 	setActive,
+	setActiveSuggestionTemplate,
 	stageRationale,
 	stageRationaleTranslation,
 	stageRoleOrTechniqueTranslation,
@@ -60,6 +61,7 @@ vi.mock('@/api/rules', () => ({
 	revertRoleOrTechnique: vi.fn(),
 	stageSuggestionTemplateField: vi.fn(),
 	revertSuggestionTemplateField: vi.fn(),
+	setActiveSuggestionTemplate: vi.fn(),
 	fetchTemplateFieldTranslations: vi.fn(),
 	stageTemplateFieldTranslation: vi.fn(),
 	revertTemplateFieldTranslation: vi.fn(),
@@ -103,6 +105,7 @@ const stageRoleOrTechniqueTranslationMock = vi.mocked(stageRoleOrTechniqueTransl
 const revertRoleOrTechniqueTranslationMock = vi.mocked(revertRoleOrTechniqueTranslation);
 const stageSuggestionTemplateFieldMock = vi.mocked(stageSuggestionTemplateField);
 const revertSuggestionTemplateFieldMock = vi.mocked(revertSuggestionTemplateField);
+const setActiveSuggestionTemplateMock = vi.mocked(setActiveSuggestionTemplate);
 const fetchTemplateFieldTranslationsMock = vi.mocked(fetchTemplateFieldTranslations);
 const stageTemplateFieldTranslationMock = vi.mocked(stageTemplateFieldTranslation);
 const revertTemplateFieldTranslationMock = vi.mocked(revertTemplateFieldTranslation);
@@ -127,6 +130,8 @@ function template(
 		techniqueNotes: null,
 		changedFields: [],
 		translations: NO_TEMPLATE_TRANSLATIONS,
+		active: true,
+		activeChanged: false,
 		version: 0,
 		...fields,
 	};
@@ -237,6 +242,7 @@ describe('RulesPage', () => {
 		revertRoleOrTechniqueTranslationMock.mockReset();
 		stageSuggestionTemplateFieldMock.mockReset();
 		revertSuggestionTemplateFieldMock.mockReset();
+		setActiveSuggestionTemplateMock.mockReset();
 		fetchTemplateFieldTranslationsMock.mockReset();
 		stageTemplateFieldTranslationMock.mockReset();
 		revertTemplateFieldTranslationMock.mockReset();
@@ -948,6 +954,41 @@ describe('RulesPage', () => {
 
 		await waitFor(() => expect(revertSuggestionTemplateFieldMock).toHaveBeenCalledWith('s1', 'RESTRICTION', 2));
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('deactivates a template against its version and refreshes the panel to offer reactivation', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock
+			.mockResolvedValueOnce([template('s1', 'Brown lentils (cooked)', { version: 2 })])
+			.mockResolvedValueOnce([
+				template('s1', 'Brown lentils (cooked)', { active: false, activeChanged: true, version: 3 }),
+			]);
+		setActiveSuggestionTemplateMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.deactivate Brown lentils (cooked)' }));
+
+		await waitFor(() => expect(setActiveSuggestionTemplateMock).toHaveBeenCalledWith('s1', false, 2));
+		expect(await screen.findByRole('button', { name: 'rules.activate Brown lentils (cooked)' })).not.toBeNull();
+		expect(screen.getByText('rules.templateDeactivated')).not.toBeNull();
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('marks a deactivated template and offers reactivation', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			template('s1', 'Brown lentils (cooked)', { active: false, activeChanged: true, version: 4 }),
+		]);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+
+		expect(await screen.findByText('rules.templateDeactivated')).not.toBeNull();
+		expect(screen.getByRole('button', { name: 'rules.activate Brown lentils (cooked)' })).not.toBeNull();
+		expect(screen.queryByRole('button', { name: 'rules.deactivate Brown lentils (cooked)' })).toBeNull();
 	});
 
 	it('warns and refreshes the grid when staging a suggestion-template field is rejected as stale', async () => {

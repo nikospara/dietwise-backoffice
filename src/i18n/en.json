@@ -67,7 +67,8 @@
 		"noTemplates": "This rule has no suggestion templates.",
 		"templateRestriction": "Restriction",
 		"templateEquivalence": "Equivalence",
-		"templateTechniqueNotes": "Technique notes"
+		"templateTechniqueNotes": "Technique notes",
+		"templateDeactivated": "Deactivated"
 	},
 	"home": {
 		"welcome": "Welcome, {{name}}",

@@ -28,6 +28,7 @@ import {
 	revertTriggerIngredient,
 	revertTriggerIngredientTranslation,
 	setActive,
+	setActiveSuggestionTemplate,
 	stageRationale,
 	stageRationaleTranslation,
 	stageRoleOrTechniqueTranslation,
@@ -308,6 +309,23 @@ export function RulesPage() {
 		}
 	};
 
+	const commitSetActiveTemplate = async (ruleId: string, template: SuggestionTemplate) => {
+		try {
+			await setActiveSuggestionTemplate(template.id, !template.active, template.version);
+			setConflict(false);
+			reload();
+			reloadTemplates(ruleId);
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reload();
+				reloadTemplates(ruleId);
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
 	const commitStageTemplateTranslation = async (
 		target: TemplateTranslationTarget,
 		lang: Language,
@@ -417,8 +435,28 @@ export function RulesPage() {
 				<h2 className="text-sm font-semibold">{t('rules.templatesHeader')}</h2>
 				<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 					{state.map((template) => (
-						<div key={template.id} className="border-base-300 bg-base-100 rounded border p-2">
-							<div className="font-medium">{template.alternativeIngredientName}</div>
+						<div
+							key={template.id}
+							className={`rounded border p-2 ${template.active ? 'border-base-300 bg-base-100' : 'border-error bg-error/10'}`}
+						>
+							<div className="flex items-center justify-between gap-2">
+								<span className="font-medium">{template.alternativeIngredientName}</span>
+								<div className="flex items-center gap-2">
+									{!template.active ? (
+										<span className="badge badge-error badge-sm">
+											{t('rules.templateDeactivated')}
+										</span>
+									) : null}
+									<button
+										type="button"
+										className={`btn btn-ghost btn-xs ${template.activeChanged ? 'text-warning' : ''}`}
+										aria-label={`${template.active ? t('rules.deactivate') : t('rules.activate')} ${template.alternativeIngredientName}`}
+										onClick={() => commitSetActiveTemplate(ruleId, template)}
+									>
+										{template.active ? t('rules.deactivate') : t('rules.activate')}
+									</button>
+								</div>
+							</div>
 							<div className="mt-1 flex flex-col gap-1 text-sm">
 								{renderTemplateField(ruleId, template, 'RESTRICTION', t('rules.templateRestriction'))}
 								{renderTemplateField(ruleId, template, 'EQUIVALENCE', t('rules.templateEquivalence'))}
