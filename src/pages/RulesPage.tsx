@@ -455,11 +455,11 @@ export function RulesPage() {
 			<table className="table">
 				<thead>
 					<tr>
-						<th>{t('rules.columnRecommendation')}</th>
-						<th>{t('rules.columnTriggerIngredient')}</th>
-						<th>{t('rules.columnRoleOrTechnique')}</th>
-						<th>{t('rules.columnRationale')}</th>
-						<th>{t('rules.columnActions')}</th>
+						<th className="px-0 py-4">{t('rules.columnRecommendation')}</th>
+						<th className="px-0 py-4">{t('rules.columnTriggerIngredient')}</th>
+						<th className="px-0 py-4">{t('rules.columnRoleOrTechnique')}</th>
+						<th className="px-0 py-4">{t('rules.columnRationale')}</th>
+						<th className="px-0 py-4">{t('rules.columnActions')}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -473,8 +473,8 @@ export function RulesPage() {
 						const rowClass = isNew ? 'bg-success/10' : rule.active ? '' : 'bg-error/10';
 						return (
 							<tr key={rule.id} className={rowClass}>
-								<td>{rule.recommendation}</td>
-								<td className={triggerChanged ? 'bg-warning/10' : ''}>
+								<td className="px-0 py-1">{rule.recommendation}</td>
+								<td className={triggerChanged ? 'bg-warning/10 px-0 py-1' : 'px-0 py-1'}>
 									<button
 										type="button"
 										className="link link-hover"
@@ -498,7 +498,7 @@ export function RulesPage() {
 										{translationChips(rule.triggerIngredientTranslations)}
 									</button>
 								</td>
-								<td className={roleChanged ? 'bg-warning/10' : ''}>
+								<td className={roleChanged ? 'bg-warning/10 px-0 py-1' : 'px-0 py-1'}>
 									{roleId === null ? (
 										EMPTY
 									) : (
@@ -528,7 +528,7 @@ export function RulesPage() {
 										</div>
 									)}
 								</td>
-								<td>
+								<td className="px-0 py-1">
 									<input
 										type="text"
 										className={`input input-sm input-bordered w-full ${rationaleChanged ? 'border-warning bg-warning/10' : ''}`}
@@ -548,7 +548,7 @@ export function RulesPage() {
 										{translationChips(rule.rationaleTranslations)}
 									</button>
 								</td>
-								<td>
+								<td className="px-0 py-1">
 									<div className="flex items-center gap-2">
 										{pending ? (
 											<span className="badge badge-warning">{t('rules.pendingBadge')}</span>

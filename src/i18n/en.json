@@ -21,7 +21,7 @@
 		"columnTriggerIngredient": "Trigger Ingredient",
 		"columnRoleOrTechnique": "Role or Technique",
 		"columnRationale": "Rationale",
-		"columnActions": "Actions",
+		"columnActions": "Rule Actions",
 		"rationaleEditLabel": "Edit rationale",
 		"pendingBadge": "Pending",
 		"revert": "Revert",
