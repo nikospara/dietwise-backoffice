@@ -52,7 +52,8 @@ const translationChipClass = (state: TranslationState) =>
 const translationChips = (states: Record<Language, TranslationState>) =>
 	LANGUAGES.map((lang) => (
 		<span key={lang} className={translationChipClass(states[lang])}>
-			{lang}
+			<span className="sm:hidden lg:inline">{lang}</span>
+			<span className="text-[10px] sm:inline lg:hidden">{lang.substring(0, 1)}</span>
 		</span>
 	));
 
@@ -501,34 +502,38 @@ export function RulesPage() {
 							<tr key={rule.id} className={rowClass}>
 								<td className="px-0 py-1">{rule.recommendation}</td>
 								<td className={triggerChanged ? 'bg-warning/10 px-0 py-1' : 'px-0 py-1'}>
-									<button
-										type="button"
-										className="link link-hover"
-										aria-label={t('rules.editTriggerIngredient')}
-										onClick={() => setEditing({ kind: 'trigger', id: rule.triggerIngredientId })}
-									>
-										{rule.triggerIngredient}
-									</button>
-									<button
-										type="button"
-										className="mt-1 flex cursor-pointer gap-1"
-										aria-label={t('rules.editTriggerTranslations')}
-										onClick={() =>
-											setTranslatingReference({
-												kind: 'trigger',
-												id: rule.triggerIngredientId,
-												englishName: rule.triggerIngredient,
-											})
-										}
-									>
-										{translationChips(rule.triggerIngredientTranslations)}
-									</button>
+									<div className="flex items-center gap-2">
+										<button
+											type="button"
+											className="link link-hover"
+											aria-label={t('rules.editTriggerIngredient')}
+											onClick={() =>
+												setEditing({ kind: 'trigger', id: rule.triggerIngredientId })
+											}
+										>
+											{rule.triggerIngredient}
+										</button>
+										<button
+											type="button"
+											className="flex cursor-pointer gap-1"
+											aria-label={t('rules.editTriggerTranslations')}
+											onClick={() =>
+												setTranslatingReference({
+													kind: 'trigger',
+													id: rule.triggerIngredientId,
+													englishName: rule.triggerIngredient,
+												})
+											}
+										>
+											{translationChips(rule.triggerIngredientTranslations)}
+										</button>
+									</div>
 								</td>
 								<td className={roleChanged ? 'bg-warning/10 px-0 py-1' : 'px-0 py-1'}>
 									{roleId === null ? (
 										EMPTY
 									) : (
-										<>
+										<div className="flex items-center gap-2">
 											<button
 												type="button"
 												className="link link-hover"
@@ -539,7 +544,7 @@ export function RulesPage() {
 											</button>
 											<button
 												type="button"
-												className="mt-1 flex cursor-pointer gap-1"
+												className="flex cursor-pointer gap-1"
 												aria-label={t('rules.editRoleTranslations')}
 												onClick={() =>
 													setTranslatingReference({
@@ -551,28 +556,30 @@ export function RulesPage() {
 											>
 												{translationChips(rule.roleOrTechniqueTranslations)}
 											</button>
-										</>
+										</div>
 									)}
 								</td>
 								<td className="px-0 py-1">
-									<input
-										type="text"
-										className={`input input-sm input-bordered w-full ${rationaleChanged ? 'border-warning bg-warning/10' : ''}`}
-										value={drafts[rule.id] ?? rule.rationale ?? ''}
-										aria-label={t('rules.rationaleEditLabel')}
-										onChange={(event) => onDraftChange(rule.id, event.target.value)}
-										onBlur={() => commitRationale(rule)}
-									/>
-									<button
-										type="button"
-										className="mt-1 flex cursor-pointer gap-1"
-										aria-label={t('rules.editTranslations')}
-										onClick={() =>
-											setTranslating({ ruleId: rule.id, englishRationale: rule.rationale })
-										}
-									>
-										{translationChips(rule.rationaleTranslations)}
-									</button>
+									<div className="flex items-center gap-2">
+										<input
+											type="text"
+											className={`input input-sm input-bordered min-w-0 flex-1 ${rationaleChanged ? 'border-warning bg-warning/10' : ''}`}
+											value={drafts[rule.id] ?? rule.rationale ?? ''}
+											aria-label={t('rules.rationaleEditLabel')}
+											onChange={(event) => onDraftChange(rule.id, event.target.value)}
+											onBlur={() => commitRationale(rule)}
+										/>
+										<button
+											type="button"
+											className="flex cursor-pointer gap-1"
+											aria-label={t('rules.editTranslations')}
+											onClick={() =>
+												setTranslating({ ruleId: rule.id, englishRationale: rule.rationale })
+											}
+										>
+											{translationChips(rule.rationaleTranslations)}
+										</button>
+									</div>
 								</td>
 								<td className="px-0 py-1">
 									<div className="flex items-center gap-2">
