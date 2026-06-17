@@ -34,8 +34,10 @@ import {
 import { Combobox } from '@/components/Combobox';
 import { RationaleTranslationsDialog } from '@/components/RationaleTranslationsDialog';
 import { ReferenceEditDialog } from '@/components/ReferenceEditDialog';
+import { ReferenceTranslationsDialog } from '@/components/ReferenceTranslationsDialog';
 
 type EditTarget = { kind: 'trigger' | 'role'; id: string };
+type ReferenceTranslationTarget = { kind: 'trigger' | 'role'; id: string; englishName: string };
 type TranslationTarget = { ruleId: string; englishRationale: string | null };
 
 const translationChipClass = (state: TranslationState) =>
@@ -65,6 +67,7 @@ export function RulesPage() {
 	const [newTriggerIngredientId, setNewTriggerIngredientId] = useState<string | null>(null);
 	const [newRoleOrTechniqueId, setNewRoleOrTechniqueId] = useState<string | null>(null);
 	const [editing, setEditing] = useState<EditTarget | null>(null);
+	const [translatingReference, setTranslatingReference] = useState<ReferenceTranslationTarget | null>(null);
 	const [translating, setTranslating] = useState<TranslationTarget | null>(null);
 
 	const reload = useCallback(() => {
@@ -256,14 +259,14 @@ export function RulesPage() {
 		baseVersion: number,
 	) => {
 		const stage = target.kind === 'trigger' ? stageTriggerIngredientTranslation : stageRoleOrTechniqueTranslation;
-		setEditing(null);
+		setTranslatingReference(null);
 		await runAndReload(() => stage(target.id, lang, name, explanationForLlm, baseVersion));
 	};
 
 	const commitRevertReferenceTranslation = async (target: EditTarget, lang: Language, baseVersion: number) => {
 		const revert =
 			target.kind === 'trigger' ? revertTriggerIngredientTranslation : revertRoleOrTechniqueTranslation;
-		setEditing(null);
+		setTranslatingReference(null);
 		await runAndReload(() => revert(target.id, lang, baseVersion));
 	};
 
@@ -354,17 +357,30 @@ export function RulesPage() {
 					.filter((option) => option.id !== target.id)
 					.map((option) => option.name.toLowerCase())}
 				loadDetails={target.kind === 'trigger' ? fetchTriggerIngredient : fetchRoleOrTechnique}
-				loadTranslations={
-					target.kind === 'trigger' ? fetchTriggerIngredientTranslations : fetchRoleOrTechniqueTranslations
-				}
 				onSubmit={(name, explanationForLlm, baseVersion) =>
 					commitEdit(target, name, explanationForLlm, baseVersion)
 				}
-				onStageTranslation={(lang, name, explanationForLlm, baseVersion) =>
+				onCancel={() => setEditing(null)}
+			/>
+		);
+	}
+
+	let referenceTranslationsDialog = null;
+	if (translatingReference !== null) {
+		const target = translatingReference;
+		referenceTranslationsDialog = (
+			<ReferenceTranslationsDialog
+				referenceId={target.id}
+				title={t(target.kind === 'trigger' ? 'rules.editTriggerTranslations' : 'rules.editRoleTranslations')}
+				englishName={target.englishName}
+				loadTranslations={
+					target.kind === 'trigger' ? fetchTriggerIngredientTranslations : fetchRoleOrTechniqueTranslations
+				}
+				onStage={(lang, name, explanationForLlm, baseVersion) =>
 					commitStageReferenceTranslation(target, lang, name, explanationForLlm, baseVersion)
 				}
-				onRevertTranslation={(lang, baseVersion) => commitRevertReferenceTranslation(target, lang, baseVersion)}
-				onCancel={() => setEditing(null)}
+				onRevert={(lang, baseVersion) => commitRevertReferenceTranslation(target, lang, baseVersion)}
+				onCancel={() => setTranslatingReference(null)}
 			/>
 		);
 	}
@@ -467,9 +483,20 @@ export function RulesPage() {
 									>
 										{rule.triggerIngredient}
 									</button>
-									<div className="mt-1 flex gap-1">
+									<button
+										type="button"
+										className="mt-1 flex cursor-pointer gap-1"
+										aria-label={t('rules.editTriggerTranslations')}
+										onClick={() =>
+											setTranslatingReference({
+												kind: 'trigger',
+												id: rule.triggerIngredientId,
+												englishName: rule.triggerIngredient,
+											})
+										}
+									>
 										{translationChips(rule.triggerIngredientTranslations)}
-									</div>
+									</button>
 								</td>
 								<td className={roleChanged ? 'bg-warning/10' : ''}>
 									{roleId === null ? (
@@ -484,9 +511,20 @@ export function RulesPage() {
 											>
 												{rule.roleOrTechnique}
 											</button>
-											<div className="mt-1 flex gap-1">
+											<button
+												type="button"
+												className="mt-1 flex cursor-pointer gap-1"
+												aria-label={t('rules.editRoleTranslations')}
+												onClick={() =>
+													setTranslatingReference({
+														kind: 'role',
+														id: roleId,
+														englishName: rule.roleOrTechnique ?? '',
+													})
+												}
+											>
 												{translationChips(rule.roleOrTechniqueTranslations)}
-											</div>
+											</button>
 										</div>
 									)}
 								</td>
@@ -501,7 +539,7 @@ export function RulesPage() {
 									/>
 									<button
 										type="button"
-										className="mt-1 flex gap-1"
+										className="mt-1 flex cursor-pointer gap-1"
 										aria-label={t('rules.editTranslations')}
 										onClick={() =>
 											setTranslating({ ruleId: rule.id, englishRationale: rule.rationale })
@@ -549,6 +587,7 @@ export function RulesPage() {
 				</tbody>
 			</table>
 			{editDialog}
+			{referenceTranslationsDialog}
 			{translationsDialog}
 		</div>
 	);

@@ -571,15 +571,14 @@ describe('RulesPage', () => {
 		expect(within(roleCell).getByText('NL').className).toContain('badge-success');
 	});
 
-	it('stages a trigger ingredient translation from the edit dialog against its version', async () => {
+	it('stages a trigger ingredient translation from the translations dialog against its version', async () => {
 		fetchRulesMock.mockResolvedValueOnce([UNCHANGED_RULE]).mockResolvedValueOnce([UNCHANGED_RULE]);
-		fetchTriggerIngredientMock.mockResolvedValue({ name: 'Beef', explanationForLlm: 'Red meat.', version: 0 });
 		fetchTriggerIngredientTranslationsMock.mockResolvedValue(NO_REFERENCE_TRANSLATIONS);
 		stageTriggerIngredientTranslationMock.mockResolvedValue(undefined);
 
 		render(<RulesPage />);
 
-		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerIngredient' }));
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerTranslations' }));
 		const greekName = (await screen.findByLabelText('EL rules.editName')) as HTMLInputElement;
 		fireEvent.change(greekName, { target: { value: 'Βόειο' } });
 		fireEvent.click(screen.getAllByText('rules.translationSave')[0]);
@@ -590,9 +589,8 @@ describe('RulesPage', () => {
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
 	});
 
-	it('reverts a staged role or technique translation from the edit dialog', async () => {
+	it('reverts a staged role or technique translation from the translations dialog', async () => {
 		fetchRulesMock.mockResolvedValueOnce([UNCHANGED_RULE]).mockResolvedValueOnce([UNCHANGED_RULE]);
-		fetchRoleOrTechniqueMock.mockResolvedValue({ name: 'minced in sauce', explanationForLlm: null, version: 0 });
 		fetchRoleOrTechniqueTranslationsMock.mockResolvedValue({
 			EL: { name: 'ανάμεικτο', explanationForLlm: null, version: 4 },
 			LT: { name: null, explanationForLlm: null, version: 0 },
@@ -602,7 +600,7 @@ describe('RulesPage', () => {
 
 		render(<RulesPage />);
 
-		fireEvent.click(await screen.findByRole('button', { name: 'rules.editRoleOrTechnique' }));
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.editRoleTranslations' }));
 		fireEvent.click(await screen.findByText('rules.translationRevert'));
 
 		await waitFor(() => expect(revertRoleOrTechniqueTranslationMock).toHaveBeenCalledWith('rm', 'EL', 4));
