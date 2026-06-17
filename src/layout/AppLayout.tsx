@@ -13,10 +13,10 @@ export function AppLayout() {
 	const missingRole = !hasBackofficeRole(auth.user?.access_token);
 
 	return (
-		<div className="drawer lg:drawer-open h-full">
+		<div className="drawer lg:drawer-open h-dvh">
 			<input id="app-drawer" type="checkbox" className="drawer-toggle" />
 
-			<div className="drawer-content flex h-full flex-col">
+			<div className="drawer-content flex h-dvh flex-col">
 				<header className="navbar border-base-300 bg-base-100 border-b">
 					<div className="flex-none lg:hidden">
 						<label htmlFor="app-drawer" className="btn btn-square btn-ghost" aria-label="Open menu">
@@ -38,7 +38,7 @@ export function AppLayout() {
 					</div>
 				) : null}
 
-				<main className="flex-1 overflow-y-auto p-6">
+				<main className="min-h-0 flex-1 overflow-y-auto p-6">
 					<Outlet />
 				</main>
 			</div>
