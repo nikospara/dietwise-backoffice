@@ -8,8 +8,13 @@ interface ReferenceTranslationsDialogProps {
 	/** The effective English name, shown read-only as the source the translations render. */
 	englishName: string;
 	loadTranslations: (id: string) => Promise<Record<Language, ReferenceDetails>>;
-	onStage: (lang: Language, name: string | null, explanationForLlm: string | null, baseVersion: number) => void;
-	onRevert: (lang: Language, baseVersion: number) => void;
+	onStage: (
+		lang: Language,
+		name: string | null,
+		explanationForLlm: string | null,
+		baseVersion: number,
+	) => Promise<void>;
+	onRevert: (lang: Language, baseVersion: number) => Promise<void>;
 	onCancel: () => void;
 }
 
@@ -20,6 +25,10 @@ const EMPTY_DRAFTS: Record<Language, TranslationDraft> = {
 	LT: { name: '', explanation: '' },
 	NL: { name: '', explanation: '' },
 };
+
+function draftOf(details: ReferenceDetails): TranslationDraft {
+	return { name: details.name ?? '', explanation: details.explanationForLlm ?? '' };
+}
 
 /**
  * Edits a shared reference entity's (a Trigger Ingredient or Role or Technique) name and LLM explanation in each
@@ -46,11 +55,7 @@ export function ReferenceTranslationsDialog({
 			.then((loaded) => {
 				if (!cancelled) {
 					setTranslations(loaded);
-					setDrafts({
-						EL: { name: loaded.EL.name ?? '', explanation: loaded.EL.explanationForLlm ?? '' },
-						LT: { name: loaded.LT.name ?? '', explanation: loaded.LT.explanationForLlm ?? '' },
-						NL: { name: loaded.NL.name ?? '', explanation: loaded.NL.explanationForLlm ?? '' },
-					});
+					setDrafts({ EL: draftOf(loaded.EL), LT: draftOf(loaded.LT), NL: draftOf(loaded.NL) });
 				}
 			})
 			.catch(() => {
@@ -62,6 +67,19 @@ export function ReferenceTranslationsDialog({
 			cancelled = true;
 		};
 	}, [referenceId, loadTranslations]);
+
+	// Staging or reverting one language mutates only its Working Copy version, so reload the effective translations
+	// and reset just that language's draft. The dialog stays open and other languages' in-progress edits survive.
+	const reconcile = async (lang: Language, action: () => Promise<void>) => {
+		await action();
+		try {
+			const refreshed = await loadTranslations(referenceId);
+			setTranslations(refreshed);
+			setDrafts((prev) => ({ ...prev, [lang]: draftOf(refreshed[lang]) }));
+		} catch {
+			setLoadFailed(true);
+		}
+	};
 
 	return (
 		<div className="modal modal-open" role="dialog" aria-label={title}>
@@ -89,7 +107,7 @@ export function ReferenceTranslationsDialog({
 										<button
 											type="button"
 											className="btn btn-ghost btn-xs"
-											onClick={() => onRevert(lang, current.version)}
+											onClick={() => reconcile(lang, () => onRevert(lang, current.version))}
 										>
 											{t('rules.translationRevert')}
 										</button>
@@ -126,11 +144,13 @@ export function ReferenceTranslationsDialog({
 										className="btn btn-primary btn-xs"
 										disabled={!changed}
 										onClick={() =>
-											onStage(
-												lang,
-												draft.name.trim() === '' ? null : draft.name.trim(),
-												draft.explanation.trim() === '' ? null : draft.explanation,
-												current?.version ?? 0,
+											reconcile(lang, () =>
+												onStage(
+													lang,
+													draft.name.trim() === '' ? null : draft.name.trim(),
+													draft.explanation.trim() === '' ? null : draft.explanation,
+													current?.version ?? 0,
+												),
 											)
 										}
 									>

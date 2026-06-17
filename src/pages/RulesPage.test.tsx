@@ -778,6 +778,32 @@ describe('RulesPage', () => {
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
 	});
 
+	it('keeps the translations dialog open and preserves other languages’ edits after saving one', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchTriggerIngredientTranslationsMock.mockResolvedValueOnce(NO_REFERENCE_TRANSLATIONS).mockResolvedValue({
+			EL: { name: 'Βόειο', explanationForLlm: null, version: 1, published: false },
+			LT: { name: null, explanationForLlm: null, version: 0, published: false },
+			NL: { name: null, explanationForLlm: null, version: 0, published: false },
+		});
+		stageTriggerIngredientTranslationMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerTranslations' }));
+		const greekName = (await screen.findByLabelText('EL rules.editName')) as HTMLInputElement;
+		fireEvent.change(greekName, { target: { value: 'Βόειο' } });
+		fireEvent.change(screen.getByLabelText('LT rules.editName'), { target: { value: 'Jautiena' } });
+		fireEvent.click(screen.getAllByText('rules.translationSave')[0]);
+
+		await waitFor(() =>
+			expect(stageTriggerIngredientTranslationMock).toHaveBeenCalledWith('tb', 'EL', 'Βόειο', null, 0),
+		);
+		await waitFor(() =>
+			expect((screen.getByLabelText('LT rules.editName') as HTMLInputElement).value).toBe('Jautiena'),
+		);
+		expect(fetchTriggerIngredientTranslationsMock).toHaveBeenCalledTimes(2);
+	});
+
 	it('reverts a staged role or technique translation from the translations dialog', async () => {
 		fetchRulesMock.mockResolvedValueOnce([UNCHANGED_RULE]).mockResolvedValueOnce([UNCHANGED_RULE]);
 		fetchRoleOrTechniqueTranslationsMock.mockResolvedValue({
@@ -813,6 +839,29 @@ describe('RulesPage', () => {
 			expect(stageRationaleTranslationMock).toHaveBeenCalledWith('1', 'EL', 'Ελληνική αιτιολόγηση.', 0),
 		);
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('keeps the rationale dialog open and preserves other languages’ edits after saving one', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchRationaleTranslationsMock.mockResolvedValueOnce(NO_STAGED_TRANSLATIONS).mockResolvedValue({
+			EL: { text: 'Ελληνική.', version: 1 },
+			LT: { text: null, version: 0 },
+			NL: { text: null, version: 0 },
+		});
+		stageRationaleTranslationMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTranslations' }));
+		fireEvent.change((await screen.findByLabelText('EL')) as HTMLTextAreaElement, {
+			target: { value: 'Ελληνική.' },
+		});
+		fireEvent.change(screen.getByLabelText('NL') as HTMLTextAreaElement, { target: { value: 'Nederlands.' } });
+		fireEvent.click(screen.getAllByText('rules.translationSave')[0]);
+
+		await waitFor(() => expect(stageRationaleTranslationMock).toHaveBeenCalledWith('1', 'EL', 'Ελληνική.', 0));
+		await waitFor(() => expect((screen.getByLabelText('NL') as HTMLTextAreaElement).value).toBe('Nederlands.'));
+		expect(fetchRationaleTranslationsMock).toHaveBeenCalledTimes(2);
 	});
 
 	it('reverts a staged rationale translation against its base version', async () => {
@@ -1132,6 +1181,48 @@ describe('RulesPage', () => {
 		);
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
 		await waitFor(() => expect(fetchSuggestionTemplatesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('keeps the template-field dialog open and preserves other languages’ edits after saving one', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			template('s1', 'Brown lentils (cooked)', { restriction: 'No binder' }),
+		]);
+		fetchTemplateFieldTranslationsMock.mockResolvedValueOnce(NO_STAGED_TRANSLATIONS).mockResolvedValue({
+			EL: { text: 'Greek restriction', version: 1 },
+			LT: { text: null, version: 0 },
+			NL: { text: null, version: 0 },
+		});
+		stageTemplateFieldTranslationMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+		fireEvent.click(
+			await screen.findByLabelText(
+				'rules.editTemplateTranslations rules.templateRestriction Brown lentils (cooked)',
+			),
+		);
+
+		const dialog = await screen.findByRole('dialog', {
+			name: 'rules.templateRestriction — Brown lentils (cooked)',
+		});
+		fireEvent.change(within(dialog).getByLabelText('EL'), { target: { value: 'Greek restriction' } });
+		fireEvent.change(within(dialog).getByLabelText('LT'), { target: { value: 'Lietuviškai' } });
+		fireEvent.click(within(dialog).getAllByText('rules.translationSave')[0]);
+
+		await waitFor(() =>
+			expect(stageTemplateFieldTranslationMock).toHaveBeenCalledWith(
+				's1',
+				'RESTRICTION',
+				'EL',
+				'Greek restriction',
+				0,
+			),
+		);
+		await waitFor(() =>
+			expect((within(dialog).getByLabelText('LT') as HTMLTextAreaElement).value).toBe('Lietuviškai'),
+		);
+		expect(fetchTemplateFieldTranslationsMock).toHaveBeenCalledTimes(2);
 	});
 
 	it('reverts a staged template translation from the dialog and refreshes', async () => {

@@ -10,8 +10,8 @@ interface TemplateFieldTranslationsDialogProps {
 	/** The effective English value of this field, shown read-only as the source the translations render. */
 	englishValue: string | null;
 	loadTranslations: (templateId: string, field: TemplateField) => Promise<Record<Language, VersionedText>>;
-	onStage: (lang: Language, value: string | null, baseVersion: number) => void;
-	onRevert: (lang: Language, baseVersion: number) => void;
+	onStage: (lang: Language, value: string | null, baseVersion: number) => Promise<void>;
+	onRevert: (lang: Language, baseVersion: number) => Promise<void>;
 	onCancel: () => void;
 }
 
@@ -58,6 +58,19 @@ export function TemplateFieldTranslationsDialog({
 		};
 	}, [templateId, field, loadTranslations]);
 
+	// Staging or reverting one language mutates only its Working Copy version, so reload the effective translations
+	// and reset just that language's draft. The dialog stays open and other languages' in-progress edits survive.
+	const reconcile = async (lang: Language, action: () => Promise<void>) => {
+		await action();
+		try {
+			const refreshed = await loadTranslations(templateId, field);
+			setTranslations(refreshed);
+			setDrafts((prev) => ({ ...prev, [lang]: refreshed[lang].text ?? '' }));
+		} catch {
+			setLoadFailed(true);
+		}
+	};
+
 	return (
 		<div className="modal modal-open" role="dialog" aria-label={title}>
 			<div className="modal-box">
@@ -81,7 +94,7 @@ export function TemplateFieldTranslationsDialog({
 										<button
 											type="button"
 											className="btn btn-ghost btn-xs"
-											onClick={() => onRevert(lang, current.version)}
+											onClick={() => reconcile(lang, () => onRevert(lang, current.version))}
 										>
 											{t('rules.translationRevert')}
 										</button>
@@ -100,7 +113,13 @@ export function TemplateFieldTranslationsDialog({
 										className="btn btn-primary btn-xs"
 										disabled={!changed}
 										onClick={() =>
-											onStage(lang, value.trim() === '' ? null : value, current?.version ?? 0)
+											reconcile(lang, () =>
+												onStage(
+													lang,
+													value.trim() === '' ? null : value,
+													current?.version ?? 0,
+												),
+											)
 										}
 									>
 										{t('rules.translationSave')}

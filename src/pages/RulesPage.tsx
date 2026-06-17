@@ -417,7 +417,6 @@ export function RulesPage() {
 		value: string | null,
 		baseVersion: number,
 	) => {
-		setTranslatingTemplateField(null);
 		try {
 			await stageTemplateFieldTranslation(target.templateId, target.field, lang, value, baseVersion);
 			setConflict(false);
@@ -439,7 +438,6 @@ export function RulesPage() {
 		lang: Language,
 		baseVersion: number,
 	) => {
-		setTranslatingTemplateField(null);
 		try {
 			await revertTemplateFieldTranslation(target.templateId, target.field, lang, baseVersion);
 			setConflict(false);
@@ -715,14 +713,12 @@ export function RulesPage() {
 		baseVersion: number,
 	) => {
 		const stage = target.kind === 'trigger' ? stageTriggerIngredientTranslation : stageRoleOrTechniqueTranslation;
-		setTranslatingReference(null);
 		await runAndReload(() => stage(target.id, lang, name, explanationForLlm, baseVersion));
 	};
 
 	const commitRevertReferenceTranslation = async (target: EditTarget, lang: Language, baseVersion: number) => {
 		const revert =
 			target.kind === 'trigger' ? revertTriggerIngredientTranslation : revertRoleOrTechniqueTranslation;
-		setTranslatingReference(null);
 		await runAndReload(() => revert(target.id, lang, baseVersion));
 	};
 
@@ -782,14 +778,12 @@ export function RulesPage() {
 		explanationForLlm: string | null,
 		baseVersion: number,
 	) => {
-		setTranslatingAlternative(null);
 		await commitAlternativeChange(() =>
 			stageAlternativeIngredientTranslation(id, lang, name, explanationForLlm, baseVersion),
 		);
 	};
 
 	const commitRevertAlternativeTranslation = async (id: string, lang: Language, baseVersion: number) => {
-		setTranslatingAlternative(null);
 		await commitAlternativeChange(() => revertAlternativeIngredientTranslation(id, lang, baseVersion));
 	};
 
@@ -799,7 +793,6 @@ export function RulesPage() {
 		rationale: string | null,
 		baseVersion: number,
 	) => {
-		setTranslating(null);
 		try {
 			await stageRationaleTranslation(ruleId, lang, rationale, baseVersion);
 			setConflict(false);
@@ -815,7 +808,6 @@ export function RulesPage() {
 	};
 
 	const commitRevertTranslation = async (ruleId: string, lang: Language, baseVersion: number) => {
-		setTranslating(null);
 		try {
 			await revertRationaleTranslation(ruleId, lang, baseVersion);
 			setConflict(false);
