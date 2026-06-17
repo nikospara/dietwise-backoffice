@@ -141,6 +141,10 @@ export function RulesPage() {
 									rationale: draft,
 									version,
 									changeState: r.changeState === 'NEW' ? 'NEW' : 'CHANGED',
+									changedFields:
+										r.changeState === 'NEW' || r.changedFields.includes('RATIONALE')
+											? r.changedFields
+											: [...r.changedFields, 'RATIONALE'],
 								}
 							: r,
 					) ?? null,

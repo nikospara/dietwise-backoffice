@@ -245,6 +245,37 @@ describe('RulesPage', () => {
 		expect(stageRationaleMock).toHaveBeenCalledWith('1', 'Prefer legumes.', 0);
 	});
 
+	it('offers revert for a rationale just edited inline and reverts it against the staged version', async () => {
+		fetchRulesMock.mockResolvedValueOnce([UNCHANGED_RULE]).mockResolvedValueOnce([UNCHANGED_RULE]);
+		stageRationaleMock.mockResolvedValue(5);
+		revertRationaleMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		const input = (await screen.findByLabelText('rules.rationaleEditLabel')) as HTMLInputElement;
+		fireEvent.change(input, { target: { value: 'Prefer legumes.' } });
+		fireEvent.blur(input);
+
+		fireEvent.click(await screen.findByText('rules.revert'));
+
+		await waitFor(() => expect(revertRationaleMock).toHaveBeenCalledWith('1', 5));
+	});
+
+	it('does not offer revert for a new rule whose rationale is edited inline, only discard', async () => {
+		fetchRulesMock.mockResolvedValue([NEW_RULE]);
+		stageRationaleMock.mockResolvedValue(2);
+
+		render(<RulesPage />);
+
+		const input = (await screen.findByLabelText('rules.rationaleEditLabel')) as HTMLInputElement;
+		fireEvent.change(input, { target: { value: 'Some rationale.' } });
+		fireEvent.blur(input);
+
+		await waitFor(() => expect(stageRationaleMock).toHaveBeenCalled());
+		expect(screen.queryByText('rules.revert')).toBeNull();
+		expect(screen.queryByText('rules.discard')).not.toBeNull();
+	});
+
 	it('does not stage when the rationale is left unchanged', async () => {
 		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
 
