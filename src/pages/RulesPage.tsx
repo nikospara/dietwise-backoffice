@@ -796,11 +796,11 @@ export function RulesPage() {
 							<th className="w-8 px-0 py-4">
 								<span className="sr-only">{t('rules.columnSuggestions')}</span>
 							</th>
-							<th className="px-0 py-4">{t('rules.columnRecommendation')}</th>
-							<th className="px-0 py-4">{t('rules.columnTriggerIngredient')}</th>
-							<th className="px-0 py-4">{t('rules.columnRoleOrTechnique')}</th>
-							<th className="px-0 py-4">{t('rules.columnRationale')}</th>
-							<th className="px-0 py-4">{t('rules.columnActions')}</th>
+							<th className="px-1 py-4">{t('rules.columnRecommendation')}</th>
+							<th className="px-1 py-4">{t('rules.columnTriggerIngredient')}</th>
+							<th className="px-1 py-4">{t('rules.columnRoleOrTechnique')}</th>
+							<th className="px-1 py-4">{t('rules.columnRationale')}</th>
+							<th className="px-1 py-4">{t('rules.columnActions')}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -816,7 +816,7 @@ export function RulesPage() {
 							const isExpanded = expandedRuleIds.has(rule.id);
 							return [
 								<tr key={rule.id} className={rowClass}>
-									<td className={suggestionsChanged ? 'bg-warning/10 px-0 py-1' : 'px-0 py-1'}>
+									<td className={suggestionsChanged ? 'bg-warning/10 px-1 py-1' : 'px-1 py-1'}>
 										<button
 											type="button"
 											className="btn btn-ghost btn-xs"
@@ -827,8 +827,8 @@ export function RulesPage() {
 											<span aria-hidden="true">{isExpanded ? '▾' : '▸'}</span>
 										</button>
 									</td>
-									<td className="px-0 py-1">{rule.recommendation}</td>
-									<td className={triggerChanged ? 'bg-warning/10 px-0 py-1' : 'px-0 py-1'}>
+									<td className="px-1 py-1">{rule.recommendation}</td>
+									<td className={triggerChanged ? 'bg-warning/10 px-1 py-1' : 'px-1 py-1'}>
 										<div className="flex items-center gap-2">
 											<button
 												type="button"
@@ -856,7 +856,7 @@ export function RulesPage() {
 											</button>
 										</div>
 									</td>
-									<td className={roleChanged ? 'bg-warning/10 px-0 py-1' : 'px-0 py-1'}>
+									<td className={roleChanged ? 'bg-warning/10 px-1 py-1' : 'px-1 py-1'}>
 										{roleId === null ? (
 											EMPTY
 										) : (
@@ -886,7 +886,7 @@ export function RulesPage() {
 											</div>
 										)}
 									</td>
-									<td className="px-0 py-1">
+									<td className="px-1 py-1">
 										<div className="flex items-center gap-2">
 											<input
 												type="text"
