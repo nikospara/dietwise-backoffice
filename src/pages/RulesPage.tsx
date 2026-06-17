@@ -528,7 +528,7 @@ export function RulesPage() {
 									{roleId === null ? (
 										EMPTY
 									) : (
-										<div>
+										<>
 											<button
 												type="button"
 												className="link link-hover"
@@ -551,7 +551,7 @@ export function RulesPage() {
 											>
 												{translationChips(rule.roleOrTechniqueTranslations)}
 											</button>
-										</div>
+										</>
 									)}
 								</td>
 								<td className="px-0 py-1">
