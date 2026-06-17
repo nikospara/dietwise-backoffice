@@ -57,7 +57,16 @@
 		"translationsLoadError": "Could not load the translations. Please close and try again.",
 		"translationSave": "Save",
 		"translationRevert": "Revert",
-		"translationsClose": "Close"
+		"translationsClose": "Close",
+		"columnSuggestions": "Suggestions",
+		"toggleSuggestions": "Show suggestion templates",
+		"templatesHeader": "Suggestion Templates",
+		"templatesLoading": "Loading suggestion templates…",
+		"templatesLoadError": "Could not load the suggestion templates. Please try again.",
+		"noTemplates": "This rule has no suggestion templates.",
+		"templateRestriction": "Restriction",
+		"templateEquivalence": "Equivalence",
+		"templateTechniqueNotes": "Technique notes"
 	},
 	"home": {
 		"welcome": "Welcome, {{name}}",

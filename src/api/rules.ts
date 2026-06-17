@@ -69,8 +69,22 @@ export interface Rule {
 	version: number;
 }
 
+/** One of a Rule's Suggestion Templates as shown in the backoffice panel. Any of the three swap-note texts may be absent. */
+export interface SuggestionTemplate {
+	id: string;
+	alternativeIngredientName: string;
+	restriction: string | null;
+	equivalence: string | null;
+	techniqueNotes: string | null;
+}
+
 export function fetchRules(): Promise<Rule[]> {
 	return apiFetch<Rule[]>('/rules');
+}
+
+/** Fetches a Rule's published Suggestion Templates, ordered as shown in the panel. */
+export function fetchSuggestionTemplates(ruleId: string): Promise<SuggestionTemplate[]> {
+	return apiFetch<SuggestionTemplate[]>(`/rules/${ruleId}/suggestion-templates`);
 }
 
 interface StagedVersionResponse {

@@ -13,6 +13,7 @@ import {
 	fetchRoleOrTechnique,
 	fetchRoleOrTechniqueTranslations,
 	fetchRules,
+	fetchSuggestionTemplates,
 	fetchTriggerIngredient,
 	fetchTriggerIngredientTranslations,
 	type Language,
@@ -31,6 +32,7 @@ import {
 	type NewRuleOptions,
 	type ReferenceOption,
 	type Rule,
+	type SuggestionTemplate,
 	type TranslationState,
 } from '@/api/rules';
 import { Combobox } from '@/components/Combobox';
@@ -72,6 +74,10 @@ export function RulesPage() {
 	const [editing, setEditing] = useState<EditTarget | null>(null);
 	const [translatingReference, setTranslatingReference] = useState<ReferenceTranslationTarget | null>(null);
 	const [translating, setTranslating] = useState<TranslationTarget | null>(null);
+	const [expandedRuleIds, setExpandedRuleIds] = useState<Set<string>>(new Set());
+	const [templatesByRule, setTemplatesByRule] = useState<Record<string, SuggestionTemplate[] | 'loading' | 'error'>>(
+		{},
+	);
 
 	const reload = useCallback(() => {
 		fetchRules()
@@ -180,6 +186,62 @@ export function RulesPage() {
 	const commitSetActive = (rule: Rule) => runAndReload(() => setActive(rule.id, !rule.active, rule.version));
 
 	const commitDiscard = (rule: Rule) => runAndReload(() => discardNewRule(rule.id, rule.version));
+
+	const toggleSuggestions = (ruleId: string) => {
+		const willExpand = !expandedRuleIds.has(ruleId);
+		setExpandedRuleIds((current) => {
+			const next = new Set(current);
+			if (willExpand) {
+				next.add(ruleId);
+			} else {
+				next.delete(ruleId);
+			}
+			return next;
+		});
+		if (willExpand && templatesByRule[ruleId] === undefined) {
+			setTemplatesByRule((current) => ({ ...current, [ruleId]: 'loading' }));
+			fetchSuggestionTemplates(ruleId)
+				.then((loaded) => setTemplatesByRule((current) => ({ ...current, [ruleId]: loaded })))
+				.catch(() => setTemplatesByRule((current) => ({ ...current, [ruleId]: 'error' })));
+		}
+	};
+
+	const renderTemplatesPanel = (ruleId: string) => {
+		const state = templatesByRule[ruleId];
+		if (state === undefined || state === 'loading') {
+			return <span className="loading loading-spinner loading-sm" aria-label={t('rules.templatesLoading')} />;
+		}
+		if (state === 'error') {
+			return (
+				<div className="alert alert-error">
+					<span>{t('rules.templatesLoadError')}</span>
+				</div>
+			);
+		}
+		if (state.length === 0) {
+			return <p className="text-sm opacity-70">{t('rules.noTemplates')}</p>;
+		}
+		return (
+			<div className="flex flex-col gap-2">
+				<h2 className="text-sm font-semibold">{t('rules.templatesHeader')}</h2>
+				<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+					{state.map((template) => (
+						<div key={template.id} className="border-base-300 bg-base-100 rounded border p-2">
+							<div className="font-medium">{template.alternativeIngredientName}</div>
+							<dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-sm">
+								<dt className="opacity-70">{t('rules.templateRestriction')}</dt>
+								<dd>{template.restriction ?? EMPTY}</dd>
+								<dt className="opacity-70">{t('rules.templateEquivalence')}</dt>
+								<dd>{template.equivalence ?? EMPTY}</dd>
+								<dt className="opacity-70">{t('rules.templateTechniqueNotes')}</dt>
+								<dd>{template.techniqueNotes ?? EMPTY}</dd>
+							</dl>
+						</div>
+					))}
+				</div>
+			</div>
+		);
+	};
 
 	const optionName = (entries: ReferenceOption[], id: string) =>
 		entries.find((entry) => entry.id === id)?.name ?? null;
@@ -483,6 +545,9 @@ export function RulesPage() {
 				<table className="table-pin-rows table min-w-[915px]">
 					<thead>
 						<tr>
+							<th className="w-8 px-0 py-4">
+								<span className="sr-only">{t('rules.columnSuggestions')}</span>
+							</th>
 							<th className="px-0 py-4">{t('rules.columnRecommendation')}</th>
 							<th className="px-0 py-4">{t('rules.columnTriggerIngredient')}</th>
 							<th className="px-0 py-4">{t('rules.columnRoleOrTechnique')}</th>
@@ -499,8 +564,20 @@ export function RulesPage() {
 							const roleChanged = rule.changedFields.includes('ROLE_OR_TECHNIQUE');
 							const roleId = rule.roleOrTechniqueId;
 							const rowClass = isNew ? 'bg-success/10' : rule.active ? '' : 'bg-error/10';
-							return (
+							const isExpanded = expandedRuleIds.has(rule.id);
+							return [
 								<tr key={rule.id} className={rowClass}>
+									<td className="px-0 py-1">
+										<button
+											type="button"
+											className="btn btn-ghost btn-xs"
+											aria-label={t('rules.toggleSuggestions')}
+											aria-expanded={isExpanded}
+											onClick={() => toggleSuggestions(rule.id)}
+										>
+											<span aria-hidden="true">{isExpanded ? '▾' : '▸'}</span>
+										</button>
+									</td>
 									<td className="px-0 py-1">{rule.recommendation}</td>
 									<td className={triggerChanged ? 'bg-warning/10 px-0 py-1' : 'px-0 py-1'}>
 										<div className="flex items-center gap-2">
@@ -618,8 +695,15 @@ export function RulesPage() {
 											)}
 										</div>
 									</td>
-								</tr>
-							);
+								</tr>,
+								isExpanded ? (
+									<tr key={`${rule.id}-templates`}>
+										<td colSpan={6} className="px-0">
+											<div className="bg-base-200/60 p-3">{renderTemplatesPanel(rule.id)}</div>
+										</td>
+									</tr>
+								) : null,
+							];
 						})}
 					</tbody>
 				</table>

@@ -13,6 +13,7 @@ import {
 	fetchRoleOrTechnique,
 	fetchRoleOrTechniqueTranslations,
 	fetchRules,
+	fetchSuggestionTemplates,
 	fetchTriggerIngredient,
 	fetchTriggerIngredientTranslations,
 	type Language,
@@ -35,6 +36,7 @@ import { RulesPage } from './RulesPage';
 
 vi.mock('@/api/rules', () => ({
 	fetchRules: vi.fn(),
+	fetchSuggestionTemplates: vi.fn(),
 	stageRationale: vi.fn(),
 	revertRationale: vi.fn(),
 	setActive: vi.fn(),
@@ -63,6 +65,7 @@ vi.mock('@/api/rules', () => ({
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
 const fetchRulesMock = vi.mocked(fetchRules);
+const fetchSuggestionTemplatesMock = vi.mocked(fetchSuggestionTemplates);
 const stageRationaleMock = vi.mocked(stageRationale);
 const revertRationaleMock = vi.mocked(revertRationale);
 const setActiveMock = vi.mocked(setActive);
@@ -168,6 +171,7 @@ const DEACTIVATED_RULE: Rule = {
 describe('RulesPage', () => {
 	beforeEach(() => {
 		fetchRulesMock.mockReset();
+		fetchSuggestionTemplatesMock.mockReset();
 		stageRationaleMock.mockReset();
 		revertRationaleMock.mockReset();
 		setActiveMock.mockReset();
@@ -737,5 +741,82 @@ describe('RulesPage', () => {
 
 		expect(await screen.findByText('rules.staleReload')).not.toBeNull();
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('lazily loads and shows the suggestion templates when a row is expanded', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			{
+				id: 's1',
+				alternativeIngredientName: 'Brown lentils (cooked)',
+				restriction: 'Not for burgers without binder',
+				equivalence: '1:1',
+				techniqueNotes: 'Dry sauté',
+			},
+			{
+				id: 's2',
+				alternativeIngredientName: 'Soy mince',
+				restriction: null,
+				equivalence: null,
+				techniqueNotes: null,
+			},
+		]);
+
+		render(<RulesPage />);
+
+		await screen.findByLabelText('rules.rationaleEditLabel');
+		expect(fetchSuggestionTemplatesMock).not.toHaveBeenCalled();
+
+		fireEvent.click(screen.getByRole('button', { name: 'rules.toggleSuggestions' }));
+
+		expect(await screen.findByText('Brown lentils (cooked)')).not.toBeNull();
+		expect(screen.getByText('Soy mince')).not.toBeNull();
+		expect(screen.getByText('Not for burgers without binder')).not.toBeNull();
+		expect(fetchSuggestionTemplatesMock).toHaveBeenCalledWith('1');
+	});
+
+	it('shows an empty-panel message for a rule with no suggestion templates', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([]);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+
+		expect(await screen.findByText('rules.noTemplates')).not.toBeNull();
+	});
+
+	it('collapses the suggestion-templates panel when the expander is toggled again', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			{
+				id: 's1',
+				alternativeIngredientName: 'Brown lentils (cooked)',
+				restriction: null,
+				equivalence: null,
+				techniqueNotes: null,
+			},
+		]);
+
+		render(<RulesPage />);
+
+		const toggle = await screen.findByRole('button', { name: 'rules.toggleSuggestions' });
+		fireEvent.click(toggle);
+		expect(await screen.findByText('Brown lentils (cooked)')).not.toBeNull();
+
+		fireEvent.click(toggle);
+		await waitFor(() => expect(screen.queryByText('Brown lentils (cooked)')).toBeNull());
+		expect(fetchSuggestionTemplatesMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('shows an error in the panel when the suggestion templates fail to load', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockRejectedValue(new Error('boom'));
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+
+		expect(await screen.findByText('rules.templatesLoadError')).not.toBeNull();
 	});
 });
