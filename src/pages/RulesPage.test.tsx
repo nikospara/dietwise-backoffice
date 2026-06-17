@@ -14,6 +14,7 @@ import {
 	fetchRoleOrTechniqueTranslations,
 	fetchRules,
 	fetchSuggestionTemplates,
+	fetchTemplateFieldTranslations,
 	fetchTriggerIngredient,
 	fetchTriggerIngredientTranslations,
 	type Language,
@@ -23,6 +24,7 @@ import {
 	revertRoleOrTechnique,
 	revertRoleOrTechniqueTranslation,
 	revertSuggestionTemplateField,
+	revertTemplateFieldTranslation,
 	revertTriggerIngredient,
 	revertTriggerIngredientTranslation,
 	setActive,
@@ -30,9 +32,11 @@ import {
 	stageRationaleTranslation,
 	stageRoleOrTechniqueTranslation,
 	stageSuggestionTemplateField,
+	stageTemplateFieldTranslation,
 	stageTriggerIngredientTranslation,
 	type Rule,
 	type SuggestionTemplate,
+	type TemplateField,
 	type TranslationState,
 } from '@/api/rules';
 import { RulesPage } from './RulesPage';
@@ -56,6 +60,9 @@ vi.mock('@/api/rules', () => ({
 	revertRoleOrTechnique: vi.fn(),
 	stageSuggestionTemplateField: vi.fn(),
 	revertSuggestionTemplateField: vi.fn(),
+	fetchTemplateFieldTranslations: vi.fn(),
+	stageTemplateFieldTranslation: vi.fn(),
+	revertTemplateFieldTranslation: vi.fn(),
 	fetchRationaleTranslations: vi.fn(),
 	stageRationaleTranslation: vi.fn(),
 	revertRationaleTranslation: vi.fn(),
@@ -96,6 +103,16 @@ const stageRoleOrTechniqueTranslationMock = vi.mocked(stageRoleOrTechniqueTransl
 const revertRoleOrTechniqueTranslationMock = vi.mocked(revertRoleOrTechniqueTranslation);
 const stageSuggestionTemplateFieldMock = vi.mocked(stageSuggestionTemplateField);
 const revertSuggestionTemplateFieldMock = vi.mocked(revertSuggestionTemplateField);
+const fetchTemplateFieldTranslationsMock = vi.mocked(fetchTemplateFieldTranslations);
+const stageTemplateFieldTranslationMock = vi.mocked(stageTemplateFieldTranslation);
+const revertTemplateFieldTranslationMock = vi.mocked(revertTemplateFieldTranslation);
+
+const NO_TRANSLATIONS: Record<Language, TranslationState> = { EL: 'MISSING', LT: 'MISSING', NL: 'MISSING' };
+const NO_TEMPLATE_TRANSLATIONS: Record<TemplateField, Record<Language, TranslationState>> = {
+	RESTRICTION: NO_TRANSLATIONS,
+	EQUIVALENCE: NO_TRANSLATIONS,
+	TECHNIQUE_NOTES: NO_TRANSLATIONS,
+};
 
 function template(
 	id: string,
@@ -109,12 +126,11 @@ function template(
 		equivalence: null,
 		techniqueNotes: null,
 		changedFields: [],
+		translations: NO_TEMPLATE_TRANSLATIONS,
 		version: 0,
 		...fields,
 	};
 }
-
-const NO_TRANSLATIONS: Record<Language, TranslationState> = { EL: 'MISSING', LT: 'MISSING', NL: 'MISSING' };
 const NO_STAGED_TRANSLATIONS = {
 	EL: { text: null, version: 0 },
 	LT: { text: null, version: 0 },
@@ -221,6 +237,9 @@ describe('RulesPage', () => {
 		revertRoleOrTechniqueTranslationMock.mockReset();
 		stageSuggestionTemplateFieldMock.mockReset();
 		revertSuggestionTemplateFieldMock.mockReset();
+		fetchTemplateFieldTranslationsMock.mockReset();
+		stageTemplateFieldTranslationMock.mockReset();
+		revertTemplateFieldTranslationMock.mockReset();
 		fetchNewRuleOptionsMock.mockResolvedValue({
 			recommendations: [],
 			triggerIngredients: [],
@@ -228,6 +247,7 @@ describe('RulesPage', () => {
 		});
 		fetchTriggerIngredientTranslationsMock.mockResolvedValue(NO_REFERENCE_TRANSLATIONS);
 		fetchRoleOrTechniqueTranslationsMock.mockResolvedValue(NO_REFERENCE_TRANSLATIONS);
+		fetchTemplateFieldTranslationsMock.mockResolvedValue(NO_STAGED_TRANSLATIONS);
 	});
 
 	it('renders one row per rule, blanks a missing role, and makes the rationale editable', async () => {
@@ -947,6 +967,101 @@ describe('RulesPage', () => {
 		fireEvent.blur(input);
 
 		expect(await screen.findByText('rules.staleReload')).not.toBeNull();
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('shows an independent translation chip-set per suggestion-template field', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			template('s1', 'Brown lentils (cooked)', {
+				translations: {
+					RESTRICTION: { EL: 'STAGED', LT: 'PRESENT', NL: 'MISSING' },
+					EQUIVALENCE: NO_TRANSLATIONS,
+					TECHNIQUE_NOTES: NO_TRANSLATIONS,
+				},
+			}),
+		]);
+
+		render(<RulesPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+
+		const restrictionChips = await screen.findByLabelText(
+			'rules.editTemplateTranslations rules.templateRestriction Brown lentils (cooked)',
+		);
+		const badges = restrictionChips.querySelectorAll('.badge');
+		expect(badges[0].className).toContain('badge-warning');
+		expect(badges[1].className).toContain('badge-success');
+		expect(badges[2].className).toContain('badge-ghost');
+
+		const equivalenceChips = screen.getByLabelText(
+			'rules.editTemplateTranslations rules.templateEquivalence Brown lentils (cooked)',
+		);
+		expect(equivalenceChips.querySelectorAll('.badge-warning')).toHaveLength(0);
+	});
+
+	it('opens the per-field translations dialog and stages a template translation', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			template('s1', 'Brown lentils (cooked)', { restriction: 'No binder' }),
+		]);
+		stageTemplateFieldTranslationMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+		fireEvent.click(
+			await screen.findByLabelText(
+				'rules.editTemplateTranslations rules.templateRestriction Brown lentils (cooked)',
+			),
+		);
+
+		const dialog = await screen.findByRole('dialog', {
+			name: 'rules.templateRestriction — Brown lentils (cooked)',
+		});
+		const greek = within(dialog).getByLabelText('EL');
+		fireEvent.change(greek, { target: { value: 'Greek restriction' } });
+		fireEvent.click(within(dialog).getAllByText('rules.translationSave')[0]);
+
+		await waitFor(() =>
+			expect(stageTemplateFieldTranslationMock).toHaveBeenCalledWith(
+				's1',
+				'RESTRICTION',
+				'EL',
+				'Greek restriction',
+				0,
+			),
+		);
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+		await waitFor(() => expect(fetchSuggestionTemplatesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('reverts a staged template translation from the dialog and refreshes', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			template('s1', 'Brown lentils (cooked)', { restriction: 'No binder' }),
+		]);
+		fetchTemplateFieldTranslationsMock.mockResolvedValue({
+			EL: { text: 'Greek restriction', version: 4 },
+			LT: { text: null, version: 0 },
+			NL: { text: null, version: 0 },
+		});
+		revertTemplateFieldTranslationMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+		fireEvent.click(
+			await screen.findByLabelText(
+				'rules.editTemplateTranslations rules.templateRestriction Brown lentils (cooked)',
+			),
+		);
+
+		const dialog = await screen.findByRole('dialog', {
+			name: 'rules.templateRestriction — Brown lentils (cooked)',
+		});
+		fireEvent.click(within(dialog).getByText('rules.translationRevert'));
+
+		await waitFor(() =>
+			expect(revertTemplateFieldTranslationMock).toHaveBeenCalledWith('s1', 'RESTRICTION', 'EL', 4),
+		);
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
 	});
 });

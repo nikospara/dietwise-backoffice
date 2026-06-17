@@ -14,6 +14,7 @@ import {
 	fetchRoleOrTechniqueTranslations,
 	fetchRules,
 	fetchSuggestionTemplates,
+	fetchTemplateFieldTranslations,
 	fetchTriggerIngredient,
 	fetchTriggerIngredientTranslations,
 	type Language,
@@ -23,6 +24,7 @@ import {
 	revertRoleOrTechnique,
 	revertRoleOrTechniqueTranslation,
 	revertSuggestionTemplateField,
+	revertTemplateFieldTranslation,
 	revertTriggerIngredient,
 	revertTriggerIngredientTranslation,
 	setActive,
@@ -30,6 +32,7 @@ import {
 	stageRationaleTranslation,
 	stageRoleOrTechniqueTranslation,
 	stageSuggestionTemplateField,
+	stageTemplateFieldTranslation,
 	stageTriggerIngredientTranslation,
 	type NewRuleOptions,
 	type ReferenceOption,
@@ -42,10 +45,18 @@ import { Combobox } from '@/components/Combobox';
 import { RationaleTranslationsDialog } from '@/components/RationaleTranslationsDialog';
 import { ReferenceEditDialog } from '@/components/ReferenceEditDialog';
 import { ReferenceTranslationsDialog } from '@/components/ReferenceTranslationsDialog';
+import { TemplateFieldTranslationsDialog } from '@/components/TemplateFieldTranslationsDialog';
 
 type EditTarget = { kind: 'trigger' | 'role'; id: string };
 type ReferenceTranslationTarget = { kind: 'trigger' | 'role'; id: string; englishName: string };
 type TranslationTarget = { ruleId: string; englishRationale: string | null };
+type TemplateTranslationTarget = {
+	ruleId: string;
+	templateId: string;
+	field: TemplateField;
+	title: string;
+	englishValue: string | null;
+};
 
 const translationChipClass = (state: TranslationState) =>
 	state === 'STAGED'
@@ -84,6 +95,7 @@ export function RulesPage() {
 	const [editing, setEditing] = useState<EditTarget | null>(null);
 	const [translatingReference, setTranslatingReference] = useState<ReferenceTranslationTarget | null>(null);
 	const [translating, setTranslating] = useState<TranslationTarget | null>(null);
+	const [translatingTemplateField, setTranslatingTemplateField] = useState<TemplateTranslationTarget | null>(null);
 	const [expandedRuleIds, setExpandedRuleIds] = useState<Set<string>>(new Set());
 	const [templatesByRule, setTemplatesByRule] = useState<Record<string, SuggestionTemplate[] | 'loading' | 'error'>>(
 		{},
@@ -296,28 +308,91 @@ export function RulesPage() {
 		}
 	};
 
+	const commitStageTemplateTranslation = async (
+		target: TemplateTranslationTarget,
+		lang: Language,
+		value: string | null,
+		baseVersion: number,
+	) => {
+		setTranslatingTemplateField(null);
+		try {
+			await stageTemplateFieldTranslation(target.templateId, target.field, lang, value, baseVersion);
+			setConflict(false);
+			reload();
+			reloadTemplates(target.ruleId);
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reload();
+				reloadTemplates(target.ruleId);
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
+	const commitRevertTemplateTranslation = async (
+		target: TemplateTranslationTarget,
+		lang: Language,
+		baseVersion: number,
+	) => {
+		setTranslatingTemplateField(null);
+		try {
+			await revertTemplateFieldTranslation(target.templateId, target.field, lang, baseVersion);
+			setConflict(false);
+			reload();
+			reloadTemplates(target.ruleId);
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reload();
+				reloadTemplates(target.ruleId);
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
 	const renderTemplateField = (ruleId: string, template: SuggestionTemplate, field: TemplateField, label: string) => {
 		const changed = template.changedFields.includes(field);
 		return (
-			<div className="flex items-center gap-2">
-				<span className="w-28 shrink-0 opacity-70">{label}</span>
-				<input
-					type="text"
-					className={`input input-xs input-bordered min-w-0 flex-1 ${changed ? 'border-warning bg-warning/10' : ''}`}
-					value={templateDrafts[`${template.id}:${field}`] ?? templateFieldValue(template, field) ?? ''}
-					aria-label={`${label} ${template.alternativeIngredientName}`}
-					onChange={(event) => onTemplateDraftChange(template.id, field, event.target.value)}
-					onBlur={() => commitTemplateField(ruleId, template, field)}
-				/>
-				{changed ? (
-					<button
-						type="button"
-						className="btn btn-ghost btn-xs"
-						onClick={() => commitRevertTemplateField(ruleId, template, field)}
-					>
-						{t('rules.revert')}
-					</button>
-				) : null}
+			<div className="flex flex-col gap-1">
+				<div className="flex items-center gap-2">
+					<span className="w-28 shrink-0 opacity-70">{label}</span>
+					<input
+						type="text"
+						className={`input input-xs input-bordered min-w-0 flex-1 ${changed ? 'border-warning bg-warning/10' : ''}`}
+						value={templateDrafts[`${template.id}:${field}`] ?? templateFieldValue(template, field) ?? ''}
+						aria-label={`${label} ${template.alternativeIngredientName}`}
+						onChange={(event) => onTemplateDraftChange(template.id, field, event.target.value)}
+						onBlur={() => commitTemplateField(ruleId, template, field)}
+					/>
+					{changed ? (
+						<button
+							type="button"
+							className="btn btn-ghost btn-xs"
+							onClick={() => commitRevertTemplateField(ruleId, template, field)}
+						>
+							{t('rules.revert')}
+						</button>
+					) : null}
+				</div>
+				<button
+					type="button"
+					className="flex items-center gap-1 self-start pl-28"
+					aria-label={`${t('rules.editTemplateTranslations')} ${label} ${template.alternativeIngredientName}`}
+					onClick={() =>
+						setTranslatingTemplateField({
+							ruleId,
+							templateId: template.id,
+							field,
+							title: `${label} — ${template.alternativeIngredientName}`,
+							englishValue: templateFieldValue(template, field),
+						})
+					}
+				>
+					{translationChips(template.translations[field])}
+				</button>
 			</div>
 		);
 	};
@@ -609,6 +684,23 @@ export function RulesPage() {
 		);
 	}
 
+	let templateTranslationsDialog = null;
+	if (translatingTemplateField !== null) {
+		const target = translatingTemplateField;
+		templateTranslationsDialog = (
+			<TemplateFieldTranslationsDialog
+				templateId={target.templateId}
+				field={target.field}
+				title={target.title}
+				englishValue={target.englishValue}
+				loadTranslations={fetchTemplateFieldTranslations}
+				onStage={(lang, value, baseVersion) => commitStageTemplateTranslation(target, lang, value, baseVersion)}
+				onRevert={(lang, baseVersion) => commitRevertTemplateTranslation(target, lang, baseVersion)}
+				onCancel={() => setTranslatingTemplateField(null)}
+			/>
+		);
+	}
+
 	return (
 		<div className="flex h-full flex-col">
 			<h1 className="mb-4 text-xl font-semibold">{t('rules.title')}</h1>
@@ -830,6 +922,7 @@ export function RulesPage() {
 			{editDialog}
 			{referenceTranslationsDialog}
 			{translationsDialog}
+			{templateTranslationsDialog}
 		</div>
 	);
 }

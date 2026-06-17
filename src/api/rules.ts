@@ -83,6 +83,8 @@ export interface SuggestionTemplate {
 	techniqueNotes: string | null;
 	/** Which of the three English text fields carry a pending change. */
 	changedFields: TemplateField[];
+	/** Completeness of each English field's translation in each non-English language. */
+	translations: Record<TemplateField, Record<Language, TranslationState>>;
 	/** Working Copy version to base the next edit on (0 when the template has no Staged Change). */
 	version: number;
 }
@@ -148,6 +150,50 @@ export function revertSuggestionTemplateField(
 	return apiFetch<void>(`/rules/suggestion-templates/${templateId}/${field}?baseVersion=${baseVersion}`, {
 		method: 'DELETE',
 	});
+}
+
+/**
+ * Fetches the effective translation of one field of a Suggestion Template for each non-English language (master
+ * overlaid by any Staged Change) and the Working Copy version to base an edit on, to pre-fill the translations dialog.
+ */
+export function fetchTemplateFieldTranslations(
+	templateId: string,
+	field: TemplateField,
+): Promise<Record<Language, VersionedText>> {
+	return apiFetch<Record<Language, VersionedText>>(`/rules/suggestion-templates/${templateId}/${field}/translations`);
+}
+
+/**
+ * Stages one field of a Suggestion Template's translation for one language in the Working Copy. A {@code null} value
+ * clears that field (falls back to English). Rejects with {@link ApiError} status 409 when the base version is stale.
+ */
+export function stageTemplateFieldTranslation(
+	templateId: string,
+	field: TemplateField,
+	lang: Language,
+	value: string | null,
+	baseVersion: number,
+): Promise<void> {
+	return apiFetch<void>(`/rules/suggestion-templates/${templateId}/${field}/translations/${lang}`, {
+		method: 'PUT',
+		body: JSON.stringify({ value, baseVersion }),
+	});
+}
+
+/**
+ * Reverts one staged field of a Suggestion Template's translation for one language, restoring the published master
+ * translation. Rejects with {@link ApiError} status 409 when the base version is stale.
+ */
+export function revertTemplateFieldTranslation(
+	templateId: string,
+	field: TemplateField,
+	lang: Language,
+	baseVersion: number,
+): Promise<void> {
+	return apiFetch<void>(
+		`/rules/suggestion-templates/${templateId}/${field}/translations/${lang}?baseVersion=${baseVersion}`,
+		{ method: 'DELETE' },
+	);
 }
 
 /**
