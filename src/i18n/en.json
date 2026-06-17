@@ -68,7 +68,12 @@
 		"templateRestriction": "Restriction",
 		"templateEquivalence": "Equivalence",
 		"templateTechniqueNotes": "Technique notes",
-		"templateDeactivated": "Deactivated"
+		"templateDeactivated": "Deactivated",
+		"addTemplate": "Add a template:",
+		"addTemplateLabel": "Add a suggestion template",
+		"selectAlternative": "Choose an alternative ingredient…",
+		"templateAlreadyExists": "This rule already has a template for that alternative — shown below.",
+		"discardTemplate": "Discard template"
 	},
 	"home": {
 		"welcome": "Welcome, {{name}}",

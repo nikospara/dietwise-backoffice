@@ -2,12 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '@/api/client';
 import {
+	addSuggestionTemplate,
 	createRoleOrTechnique,
 	createRule,
 	createTriggerIngredient,
 	discardNewRule,
+	discardSuggestionTemplate,
 	editRoleOrTechnique,
 	editTriggerIngredient,
+	fetchAlternativeIngredientOptions,
 	fetchNewRuleOptions,
 	fetchRationaleTranslations,
 	fetchRoleOrTechnique,
@@ -102,6 +105,8 @@ export function RulesPage() {
 		{},
 	);
 	const [templateDrafts, setTemplateDrafts] = useState<Record<string, string>>({});
+	const [alternativeOptions, setAlternativeOptions] = useState<ReferenceOption[] | null>(null);
+	const [addNoticeRuleId, setAddNoticeRuleId] = useState<string | null>(null);
 
 	const reload = useCallback(() => {
 		fetchRules()
@@ -214,6 +219,7 @@ export function RulesPage() {
 
 	const toggleSuggestions = (ruleId: string) => {
 		const willExpand = !expandedRuleIds.has(ruleId);
+		setAddNoticeRuleId(null);
 		setExpandedRuleIds((current) => {
 			const next = new Set(current);
 			if (willExpand) {
@@ -228,6 +234,49 @@ export function RulesPage() {
 			fetchSuggestionTemplates(ruleId)
 				.then((loaded) => setTemplatesByRule((current) => ({ ...current, [ruleId]: loaded })))
 				.catch(() => setTemplatesByRule((current) => ({ ...current, [ruleId]: 'error' })));
+		}
+		if (willExpand && alternativeOptions === null) {
+			fetchAlternativeIngredientOptions()
+				.then(setAlternativeOptions)
+				.catch(() => undefined);
+		}
+	};
+
+	const commitAddTemplate = async (ruleId: string, alternativeIngredientId: string) => {
+		setAddNoticeRuleId(null);
+		try {
+			const added = await addSuggestionTemplate(ruleId, alternativeIngredientId);
+			setConflict(false);
+			if (!added.created) {
+				setAddNoticeRuleId(ruleId);
+			}
+			reload();
+			reloadTemplates(ruleId);
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reload();
+				reloadTemplates(ruleId);
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
+	const commitDiscardTemplate = async (ruleId: string, template: SuggestionTemplate) => {
+		try {
+			await discardSuggestionTemplate(template.id, template.version);
+			setConflict(false);
+			reload();
+			reloadTemplates(ruleId);
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reload();
+				reloadTemplates(ruleId);
+			} else {
+				setFailed(true);
+			}
 		}
 	};
 
@@ -265,9 +314,10 @@ export function RulesPage() {
 									equivalence: field === 'EQUIVALENCE' ? value : candidate.equivalence,
 									techniqueNotes: field === 'TECHNIQUE_NOTES' ? value : candidate.techniqueNotes,
 									version,
-									changedFields: candidate.changedFields.includes(field)
-										? candidate.changedFields
-										: [...candidate.changedFields, field],
+									changedFields:
+										!candidate.published || candidate.changedFields.includes(field)
+											? candidate.changedFields
+											: [...candidate.changedFields, field],
 								}
 							: candidate,
 					),
@@ -427,12 +477,10 @@ export function RulesPage() {
 				</div>
 			);
 		}
-		if (state.length === 0) {
-			return <p className="text-sm opacity-70">{t('rules.noTemplates')}</p>;
-		}
 		return (
 			<div className="flex flex-col gap-2">
 				<h2 className="text-sm font-semibold">{t('rules.templatesHeader')}</h2>
+				{state.length === 0 ? <p className="text-sm opacity-70">{t('rules.noTemplates')}</p> : null}
 				<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 					{state.map((template) => (
 						<div
@@ -447,14 +495,25 @@ export function RulesPage() {
 											{t('rules.templateDeactivated')}
 										</span>
 									) : null}
-									<button
-										type="button"
-										className={`btn btn-ghost btn-xs ${template.activeChanged ? 'text-warning' : ''}`}
-										aria-label={`${template.active ? t('rules.deactivate') : t('rules.activate')} ${template.alternativeIngredientName}`}
-										onClick={() => commitSetActiveTemplate(ruleId, template)}
-									>
-										{template.active ? t('rules.deactivate') : t('rules.activate')}
-									</button>
+									{template.published ? (
+										<button
+											type="button"
+											className={`btn btn-ghost btn-xs ${template.activeChanged ? 'text-warning' : ''}`}
+											aria-label={`${template.active ? t('rules.deactivate') : t('rules.activate')} ${template.alternativeIngredientName}`}
+											onClick={() => commitSetActiveTemplate(ruleId, template)}
+										>
+											{template.active ? t('rules.deactivate') : t('rules.activate')}
+										</button>
+									) : (
+										<button
+											type="button"
+											className="btn btn-ghost btn-xs"
+											aria-label={`${t('rules.discardTemplate')} ${template.alternativeIngredientName}`}
+											onClick={() => commitDiscardTemplate(ruleId, template)}
+										>
+											{t('rules.discard')}
+										</button>
+									)}
 								</div>
 							</div>
 							<div className="mt-1 flex flex-col gap-1 text-sm">
@@ -470,6 +529,25 @@ export function RulesPage() {
 						</div>
 					))}
 				</div>
+				<div className="flex flex-wrap items-center gap-2">
+					<span className="text-sm opacity-70">{t('rules.addTemplate')}</span>
+					<div className="w-64">
+						<Combobox
+							options={alternativeOptions ?? []}
+							value={null}
+							onChange={(altId) => {
+								if (altId !== null) {
+									commitAddTemplate(ruleId, altId);
+								}
+							}}
+							label={t('rules.addTemplateLabel')}
+							placeholder={t('rules.selectAlternative')}
+						/>
+					</div>
+				</div>
+				{addNoticeRuleId === ruleId ? (
+					<p className="text-info text-sm">{t('rules.templateAlreadyExists')}</p>
+				) : null}
 			</div>
 		);
 	};

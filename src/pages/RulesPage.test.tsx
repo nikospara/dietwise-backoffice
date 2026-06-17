@@ -2,12 +2,15 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/client';
 import {
+	addSuggestionTemplate,
 	createRoleOrTechnique,
 	createRule,
 	createTriggerIngredient,
 	discardNewRule,
+	discardSuggestionTemplate,
 	editRoleOrTechnique,
 	editTriggerIngredient,
+	fetchAlternativeIngredientOptions,
 	fetchNewRuleOptions,
 	fetchRationaleTranslations,
 	fetchRoleOrTechnique,
@@ -45,6 +48,9 @@ import { RulesPage } from './RulesPage';
 vi.mock('@/api/rules', () => ({
 	fetchRules: vi.fn(),
 	fetchSuggestionTemplates: vi.fn(),
+	addSuggestionTemplate: vi.fn(),
+	discardSuggestionTemplate: vi.fn(),
+	fetchAlternativeIngredientOptions: vi.fn(),
 	stageRationale: vi.fn(),
 	revertRationale: vi.fn(),
 	setActive: vi.fn(),
@@ -80,6 +86,9 @@ vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => k
 
 const fetchRulesMock = vi.mocked(fetchRules);
 const fetchSuggestionTemplatesMock = vi.mocked(fetchSuggestionTemplates);
+const addSuggestionTemplateMock = vi.mocked(addSuggestionTemplate);
+const discardSuggestionTemplateMock = vi.mocked(discardSuggestionTemplate);
+const fetchAlternativeIngredientOptionsMock = vi.mocked(fetchAlternativeIngredientOptions);
 const stageRationaleMock = vi.mocked(stageRationale);
 const revertRationaleMock = vi.mocked(revertRationale);
 const setActiveMock = vi.mocked(setActive);
@@ -132,10 +141,16 @@ function template(
 		translations: NO_TEMPLATE_TRANSLATIONS,
 		active: true,
 		activeChanged: false,
+		published: true,
 		version: 0,
 		...fields,
 	};
 }
+
+const ALTERNATIVE_OPTIONS = [
+	{ id: 'a1', name: 'Smoked tofu cubes' },
+	{ id: 'a2', name: 'Seitan steak' },
+];
 const NO_STAGED_TRANSLATIONS = {
 	EL: { text: null, version: 0 },
 	LT: { text: null, version: 0 },
@@ -217,6 +232,9 @@ describe('RulesPage', () => {
 	beforeEach(() => {
 		fetchRulesMock.mockReset();
 		fetchSuggestionTemplatesMock.mockReset();
+		addSuggestionTemplateMock.mockReset();
+		discardSuggestionTemplateMock.mockReset();
+		fetchAlternativeIngredientOptionsMock.mockReset();
 		stageRationaleMock.mockReset();
 		revertRationaleMock.mockReset();
 		setActiveMock.mockReset();
@@ -254,6 +272,7 @@ describe('RulesPage', () => {
 		fetchTriggerIngredientTranslationsMock.mockResolvedValue(NO_REFERENCE_TRANSLATIONS);
 		fetchRoleOrTechniqueTranslationsMock.mockResolvedValue(NO_REFERENCE_TRANSLATIONS);
 		fetchTemplateFieldTranslationsMock.mockResolvedValue(NO_STAGED_TRANSLATIONS);
+		fetchAlternativeIngredientOptionsMock.mockResolvedValue(ALTERNATIVE_OPTIONS);
 	});
 
 	it('renders one row per rule, blanks a missing role, and makes the rationale editable', async () => {
@@ -1104,5 +1123,84 @@ describe('RulesPage', () => {
 			expect(revertTemplateFieldTranslationMock).toHaveBeenCalledWith('s1', 'RESTRICTION', 'EL', 4),
 		);
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('adds a template by choosing an existing alternative ingredient from the combobox', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([]);
+		addSuggestionTemplateMock.mockResolvedValue({ templateId: 's-new', created: true });
+
+		render(<RulesPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+
+		const addInput = await screen.findByLabelText('rules.addTemplateLabel');
+		fireEvent.focus(addInput);
+		fireEvent.mouseDown(await screen.findByRole('button', { name: 'Smoked tofu cubes' }));
+
+		await waitFor(() => expect(addSuggestionTemplateMock).toHaveBeenCalledWith('1', 'a1'));
+		await waitFor(() => expect(fetchSuggestionTemplatesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('offers the existing template instead of a duplicate when the alternative is already on the rule', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			template('s1', 'Smoked tofu cubes', { active: false, version: 2 }),
+		]);
+		addSuggestionTemplateMock.mockResolvedValue({ templateId: 's1', created: false });
+
+		render(<RulesPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+
+		// the deactivated template is shown with a reactivate (Activate) affordance
+		expect(await screen.findByLabelText('rules.activate Smoked tofu cubes')).not.toBeNull();
+
+		const addInput = screen.getByLabelText('rules.addTemplateLabel');
+		fireEvent.focus(addInput);
+		fireEvent.mouseDown(await screen.findByRole('button', { name: 'Smoked tofu cubes' }));
+
+		await waitFor(() => expect(addSuggestionTemplateMock).toHaveBeenCalledWith('1', 'a1'));
+		expect(await screen.findByText('rules.templateAlreadyExists')).not.toBeNull();
+		// still a single card, offering reactivation
+		expect(screen.getAllByLabelText('rules.activate Smoked tofu cubes')).toHaveLength(1);
+	});
+
+	it('discards a new unpublished template from the panel instead of deactivating it', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			template('s-new', 'Smoked tofu cubes', { published: false, version: 1 }),
+		]);
+		discardSuggestionTemplateMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+
+		const discard = await screen.findByLabelText('rules.discardTemplate Smoked tofu cubes');
+		expect(screen.queryByLabelText('rules.deactivate Smoked tofu cubes')).toBeNull();
+
+		fireEvent.click(discard);
+
+		await waitFor(() => expect(discardSuggestionTemplateMock).toHaveBeenCalledWith('s-new', 1));
+		await waitFor(() => expect(fetchSuggestionTemplatesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('stages a new template field edit without offering a per-field revert', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			template('s-new', 'Smoked tofu cubes', { published: false, version: 1 }),
+		]);
+		stageSuggestionTemplateFieldMock.mockResolvedValue(2);
+
+		render(<RulesPage />);
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+
+		const input = (await screen.findByLabelText('rules.templateRestriction Smoked tofu cubes')) as HTMLInputElement;
+		fireEvent.change(input, { target: { value: 'Pat dry first' } });
+		fireEvent.blur(input);
+
+		await waitFor(() =>
+			expect(stageSuggestionTemplateFieldMock).toHaveBeenCalledWith('s-new', 'RESTRICTION', 'Pat dry first', 1),
+		);
+		expect(screen.queryByText('rules.revert')).toBeNull();
+		expect(input.className).not.toContain('bg-warning');
 	});
 });

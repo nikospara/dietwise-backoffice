@@ -89,8 +89,18 @@ export interface SuggestionTemplate {
 	active: boolean;
 	/** Whether the effective active state differs from published master because of a staged Deactivate or Activate. */
 	activeChanged: boolean;
+	/** Whether a published master baseline exists; false for a Working-Copy-only template that can be discarded. */
+	published: boolean;
 	/** Working Copy version to base the next edit on (0 when the template has no Staged Change). */
 	version: number;
+}
+
+/** The outcome of adding a template for a chosen AlternativeIngredient: the id of the template covering it, and whether
+ * it was newly created. `created` is false when the Rule already had a template for the alternative (the existing one is
+ * surfaced instead of a duplicate, so it can be reactivated when deactivated). */
+export interface AddedTemplate {
+	templateId: string;
+	created: boolean;
 }
 
 export function fetchRules(): Promise<Rule[]> {
@@ -235,6 +245,31 @@ export function discardNewRule(id: string, baseVersion: number): Promise<void> {
 /** Fetches the reference data (Recommendations, Trigger Ingredients, Roles or Techniques) for the new-Rule form. */
 export function fetchNewRuleOptions(): Promise<NewRuleOptions> {
 	return apiFetch<NewRuleOptions>('/rules/new-rule-options');
+}
+
+/** Fetches the published AlternativeIngredients an editor can add to a Rule, as id and name, sorted by name. */
+export function fetchAlternativeIngredientOptions(): Promise<ReferenceOption[]> {
+	return apiFetch<ReferenceOption[]>('/rules/alternative-ingredients');
+}
+
+/**
+ * Adds a Suggestion Template to a Rule for an existing AlternativeIngredient, staged in the Working Copy. When the Rule
+ * already has a template for the alternative no duplicate is created; the existing one is returned ({@code created}
+ * false) so it can be reactivated when deactivated.
+ */
+export function addSuggestionTemplate(ruleId: string, alternativeIngredientId: string): Promise<AddedTemplate> {
+	return apiFetch<AddedTemplate>(`/rules/${ruleId}/suggestion-templates`, {
+		method: 'POST',
+		body: JSON.stringify({ alternativeIngredientId }),
+	});
+}
+
+/**
+ * Discards an unpublished new Suggestion Template, removing its Working Copy row so it disappears from the panel.
+ * Rejects with {@link ApiError} status 409 when the base version is stale.
+ */
+export function discardSuggestionTemplate(templateId: string, baseVersion: number): Promise<void> {
+	return apiFetch<void>(`/rules/suggestion-templates/${templateId}?baseVersion=${baseVersion}`, { method: 'DELETE' });
 }
 
 /**
