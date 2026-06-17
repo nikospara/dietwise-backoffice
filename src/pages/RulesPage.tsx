@@ -19,7 +19,9 @@ import {
 	LANGUAGES,
 	revertRationale,
 	revertRationaleTranslation,
+	revertRoleOrTechnique,
 	revertRoleOrTechniqueTranslation,
+	revertTriggerIngredient,
 	revertTriggerIngredientTranslation,
 	setActive,
 	stageRationale,
@@ -251,6 +253,25 @@ export function RulesPage() {
 		}
 	};
 
+	const commitRevertReference = async (target: EditTarget, baseVersion: number) => {
+		const revert = target.kind === 'trigger' ? revertTriggerIngredient : revertRoleOrTechnique;
+		setEditing(null);
+		try {
+			await revert(target.id, baseVersion);
+			setConflict(false);
+			reload();
+			refreshOptions();
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reload();
+				refreshOptions();
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
 	const commitStageReferenceTranslation = async (
 		target: EditTarget,
 		lang: Language,
@@ -360,6 +381,7 @@ export function RulesPage() {
 				onSubmit={(name, explanationForLlm, baseVersion) =>
 					commitEdit(target, name, explanationForLlm, baseVersion)
 				}
+				onRevert={(baseVersion) => commitRevertReference(target, baseVersion)}
 				onCancel={() => setEditing(null)}
 			/>
 		);

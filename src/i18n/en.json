@@ -48,6 +48,7 @@
 		"editLoadError": "Could not load this entry. Please close and try again.",
 		"editCancel": "Cancel",
 		"editSave": "Save",
+		"editRevert": "Revert edit",
 		"editTranslations": "Edit translations",
 		"editTriggerTranslations": "Edit Trigger Ingredient translations",
 		"editRoleTranslations": "Edit Role or Technique translations",

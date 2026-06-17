@@ -8,9 +8,9 @@ vi.mock('react-i18next', () => ({
 }));
 
 const TRANSLATIONS: Record<Language, ReferenceDetails> = {
-	EL: { name: 'Βόειο', explanationForLlm: 'Κόκκινο κρέας.', version: 2 },
-	LT: { name: null, explanationForLlm: null, version: 0 },
-	NL: { name: 'Rundvlees', explanationForLlm: null, version: 0 },
+	EL: { name: 'Βόειο', explanationForLlm: 'Κόκκινο κρέας.', version: 2, published: true },
+	LT: { name: null, explanationForLlm: null, version: 0, published: false },
+	NL: { name: 'Rundvlees', explanationForLlm: null, version: 0, published: true },
 };
 
 function renderDialog(overrides: Partial<Parameters<typeof ReferenceTranslationsDialog>[0]> = {}) {

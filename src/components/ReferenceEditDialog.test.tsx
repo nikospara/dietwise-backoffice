@@ -9,7 +9,7 @@ vi.mock('react-i18next', () => ({
 	}),
 }));
 
-const BEEF: ReferenceDetails = { name: 'Beef', explanationForLlm: 'Red meat.', version: 2 };
+const BEEF: ReferenceDetails = { name: 'Beef', explanationForLlm: 'Red meat.', version: 2, published: true };
 
 function renderDialog(overrides: Partial<Parameters<typeof ReferenceEditDialog>[0]> = {}) {
 	const props = {
@@ -19,6 +19,7 @@ function renderDialog(overrides: Partial<Parameters<typeof ReferenceEditDialog>[
 		takenNames: ['soy sauce'],
 		loadDetails: vi.fn().mockResolvedValue(BEEF),
 		onSubmit: vi.fn().mockResolvedValue(undefined),
+		onRevert: vi.fn(),
 		onCancel: vi.fn(),
 		...overrides,
 	};
@@ -41,7 +42,11 @@ describe('ReferenceEditDialog', () => {
 	});
 
 	it('blocks saving and warns when the name collides with another entry, case-insensitively', async () => {
-		renderDialog({ loadDetails: vi.fn().mockResolvedValue({ name: 'Beef', explanationForLlm: null, version: 0 }) });
+		renderDialog({
+			loadDetails: vi
+				.fn()
+				.mockResolvedValue({ name: 'Beef', explanationForLlm: null, version: 0, published: true }),
+		});
 
 		const name = (await screen.findByLabelText('rules.editName')) as HTMLInputElement;
 		fireEvent.change(name, { target: { value: 'Soy Sauce' } });
@@ -93,5 +98,36 @@ describe('ReferenceEditDialog', () => {
 
 		expect(await screen.findByText('rules.editLoadError')).not.toBeNull();
 		expect(screen.queryByText('rules.editSave')).toBeNull();
+	});
+
+	it('offers Revert for a staged edit on a published entity and reverts against its version', async () => {
+		const { onRevert } = renderDialog();
+
+		await screen.findByLabelText('rules.editName');
+		fireEvent.click(screen.getByText('rules.editRevert'));
+
+		expect(onRevert).toHaveBeenCalledWith(2);
+	});
+
+	it('hides Revert when there is no staged edit', async () => {
+		renderDialog({
+			loadDetails: vi
+				.fn()
+				.mockResolvedValue({ name: 'Beef', explanationForLlm: null, version: 0, published: true }),
+		});
+
+		await screen.findByLabelText('rules.editName');
+		expect(screen.queryByText('rules.editRevert')).toBeNull();
+	});
+
+	it('hides Revert for a Working-Copy-only entity that has never been published', async () => {
+		renderDialog({
+			loadDetails: vi
+				.fn()
+				.mockResolvedValue({ name: 'Tempeh', explanationForLlm: null, version: 2, published: false }),
+		});
+
+		await screen.findByLabelText('rules.editName');
+		expect(screen.queryByText('rules.editRevert')).toBeNull();
 	});
 });

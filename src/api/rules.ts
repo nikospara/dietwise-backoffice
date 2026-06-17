@@ -33,6 +33,8 @@ export interface ReferenceDetails {
 	explanationForLlm: string | null;
 	/** Working Copy version to base the next edit on (0 when no Staged Change exists yet). */
 	version: number;
+	/** Whether a published master baseline exists behind these details, so a Staged Change can be reverted to it. */
+	published: boolean;
 }
 
 /** The reference data an editor chooses from when creating a new Rule. */
@@ -182,6 +184,22 @@ export function editRoleOrTechnique(
 		method: 'PUT',
 		body: JSON.stringify({ name, explanationForLlm, baseVersion }),
 	});
+}
+
+/**
+ * Reverts a shared Trigger Ingredient's staged edit, restoring its published master name and explanation; the change is
+ * seen by every referencing Rule. Rejects with {@link ApiError} status 409 when the base version is stale.
+ */
+export function revertTriggerIngredient(id: string, baseVersion: number): Promise<void> {
+	return apiFetch<void>(`/rules/trigger-ingredients/${id}?baseVersion=${baseVersion}`, { method: 'DELETE' });
+}
+
+/**
+ * Reverts a shared Role or Technique's staged edit, restoring its published master name and explanation; the change is
+ * seen by every referencing Rule. Rejects with {@link ApiError} status 409 when the base version is stale.
+ */
+export function revertRoleOrTechnique(id: string, baseVersion: number): Promise<void> {
+	return apiFetch<void>(`/rules/roles-or-techniques/${id}?baseVersion=${baseVersion}`, { method: 'DELETE' });
 }
 
 /**

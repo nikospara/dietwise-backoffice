@@ -19,7 +19,9 @@ import {
 	type ReferenceDetails,
 	revertRationale,
 	revertRationaleTranslation,
+	revertRoleOrTechnique,
 	revertRoleOrTechniqueTranslation,
+	revertTriggerIngredient,
 	revertTriggerIngredientTranslation,
 	setActive,
 	stageRationale,
@@ -45,6 +47,8 @@ vi.mock('@/api/rules', () => ({
 	fetchRoleOrTechnique: vi.fn(),
 	editTriggerIngredient: vi.fn(),
 	editRoleOrTechnique: vi.fn(),
+	revertTriggerIngredient: vi.fn(),
+	revertRoleOrTechnique: vi.fn(),
 	fetchRationaleTranslations: vi.fn(),
 	stageRationaleTranslation: vi.fn(),
 	revertRationaleTranslation: vi.fn(),
@@ -71,6 +75,8 @@ const fetchTriggerIngredientMock = vi.mocked(fetchTriggerIngredient);
 const fetchRoleOrTechniqueMock = vi.mocked(fetchRoleOrTechnique);
 const editTriggerIngredientMock = vi.mocked(editTriggerIngredient);
 const editRoleOrTechniqueMock = vi.mocked(editRoleOrTechnique);
+const revertTriggerIngredientMock = vi.mocked(revertTriggerIngredient);
+const revertRoleOrTechniqueMock = vi.mocked(revertRoleOrTechnique);
 const fetchRationaleTranslationsMock = vi.mocked(fetchRationaleTranslations);
 const stageRationaleTranslationMock = vi.mocked(stageRationaleTranslation);
 const revertRationaleTranslationMock = vi.mocked(revertRationaleTranslation);
@@ -88,9 +94,9 @@ const NO_STAGED_TRANSLATIONS = {
 	NL: { text: null, version: 0 },
 };
 const NO_REFERENCE_TRANSLATIONS: Record<Language, ReferenceDetails> = {
-	EL: { name: null, explanationForLlm: null, version: 0 },
-	LT: { name: null, explanationForLlm: null, version: 0 },
-	NL: { name: null, explanationForLlm: null, version: 0 },
+	EL: { name: null, explanationForLlm: null, version: 0, published: false },
+	LT: { name: null, explanationForLlm: null, version: 0, published: false },
+	NL: { name: null, explanationForLlm: null, version: 0, published: false },
 };
 
 const OPTIONS = {
@@ -174,6 +180,8 @@ describe('RulesPage', () => {
 		fetchRoleOrTechniqueMock.mockReset();
 		editTriggerIngredientMock.mockReset();
 		editRoleOrTechniqueMock.mockReset();
+		revertTriggerIngredientMock.mockReset();
+		revertRoleOrTechniqueMock.mockReset();
 		fetchRationaleTranslationsMock.mockReset();
 		stageRationaleTranslationMock.mockReset();
 		revertRationaleTranslationMock.mockReset();
@@ -467,7 +475,12 @@ describe('RulesPage', () => {
 
 	it('opens the trigger ingredient edit dialog from its grid cell and stages the edit', async () => {
 		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
-		fetchTriggerIngredientMock.mockResolvedValue({ name: 'Beef', explanationForLlm: 'Red meat.', version: 0 });
+		fetchTriggerIngredientMock.mockResolvedValue({
+			name: 'Beef',
+			explanationForLlm: 'Red meat.',
+			version: 0,
+			published: true,
+		});
 		editTriggerIngredientMock.mockResolvedValue(undefined);
 
 		render(<RulesPage />);
@@ -486,7 +499,12 @@ describe('RulesPage', () => {
 
 	it('opens the role or technique edit dialog from its grid cell', async () => {
 		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
-		fetchRoleOrTechniqueMock.mockResolvedValue({ name: 'minced in sauce', explanationForLlm: null, version: 0 });
+		fetchRoleOrTechniqueMock.mockResolvedValue({
+			name: 'minced in sauce',
+			explanationForLlm: null,
+			version: 0,
+			published: true,
+		});
 		editRoleOrTechniqueMock.mockResolvedValue(undefined);
 
 		render(<RulesPage />);
@@ -498,6 +516,26 @@ describe('RulesPage', () => {
 		fireEvent.click(screen.getByText('rules.editSave'));
 
 		await waitFor(() => expect(editRoleOrTechniqueMock).toHaveBeenCalledWith('rm', 'folded through', null, 0));
+	});
+
+	it('reverts a staged trigger ingredient edit from the edit dialog against its version', async () => {
+		fetchRulesMock.mockResolvedValueOnce([UNCHANGED_RULE]).mockResolvedValueOnce([UNCHANGED_RULE]);
+		fetchTriggerIngredientMock.mockResolvedValue({
+			name: 'Bovine',
+			explanationForLlm: 'Edited.',
+			version: 2,
+			published: true,
+		});
+		revertTriggerIngredientMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerIngredient' }));
+		await screen.findByLabelText('rules.editName');
+		fireEvent.click(screen.getByText('rules.editRevert'));
+
+		await waitFor(() => expect(revertTriggerIngredientMock).toHaveBeenCalledWith('tb', 2));
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
 	});
 
 	it('highlights only the trigger cell when a shared trigger ingredient edit is pending', async () => {
@@ -526,7 +564,12 @@ describe('RulesPage', () => {
 
 	it('warns and refreshes the grid when a shared edit is rejected as stale', async () => {
 		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
-		fetchTriggerIngredientMock.mockResolvedValue({ name: 'Beef', explanationForLlm: null, version: 0 });
+		fetchTriggerIngredientMock.mockResolvedValue({
+			name: 'Beef',
+			explanationForLlm: null,
+			version: 0,
+			published: true,
+		});
 		editTriggerIngredientMock.mockRejectedValue(new ApiError(409, 'conflict'));
 
 		render(<RulesPage />);
@@ -592,9 +635,9 @@ describe('RulesPage', () => {
 	it('reverts a staged role or technique translation from the translations dialog', async () => {
 		fetchRulesMock.mockResolvedValueOnce([UNCHANGED_RULE]).mockResolvedValueOnce([UNCHANGED_RULE]);
 		fetchRoleOrTechniqueTranslationsMock.mockResolvedValue({
-			EL: { name: 'ανάμεικτο', explanationForLlm: null, version: 4 },
-			LT: { name: null, explanationForLlm: null, version: 0 },
-			NL: { name: null, explanationForLlm: null, version: 0 },
+			EL: { name: 'ανάμεικτο', explanationForLlm: null, version: 4, published: true },
+			LT: { name: null, explanationForLlm: null, version: 0, published: false },
+			NL: { name: null, explanationForLlm: null, version: 0, published: false },
 		});
 		revertRoleOrTechniqueTranslationMock.mockResolvedValue(undefined);
 

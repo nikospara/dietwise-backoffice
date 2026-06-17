@@ -11,13 +11,15 @@ interface ReferenceEditDialogProps {
 	takenNames: string[];
 	loadDetails: (id: string) => Promise<ReferenceDetails>;
 	onSubmit: (name: string, explanationForLlm: string | null, baseVersion: number) => Promise<void>;
+	onRevert: (baseVersion: number) => void;
 	onCancel: () => void;
 }
 
 /**
  * Edits a shared reference entity (a Trigger Ingredient or a Role or Technique): its English name and LLM explanation.
  * The entity is shared master data, so the dialog warns how many Rules the edit affects and blocks an English name that
- * collides with another entry. Translations are edited separately from the grid's per-language chips.
+ * collides with another entry. A staged edit on a published entity can be reverted to its published value; translations
+ * are edited separately from the grid's per-language chips.
  */
 export function ReferenceEditDialog({
 	referenceId,
@@ -26,6 +28,7 @@ export function ReferenceEditDialog({
 	takenNames,
 	loadDetails,
 	onSubmit,
+	onRevert,
 	onCancel,
 }: ReferenceEditDialogProps) {
 	const { t } = useTranslation();
@@ -101,6 +104,15 @@ export function ReferenceEditDialog({
 					</div>
 				)}
 				<div className="modal-action">
+					{details !== null && details.version > 0 && details.published ? (
+						<button
+							type="button"
+							className="btn btn-ghost btn-sm"
+							onClick={() => onRevert(details.version)}
+						>
+							{t('rules.editRevert')}
+						</button>
+					) : null}
 					<button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
 						{t('rules.editCancel')}
 					</button>
