@@ -480,7 +480,7 @@ export function RulesPage() {
 				</div>
 				<button
 					type="button"
-					className="flex items-center gap-1 self-start pl-28"
+					className="flex cursor-pointer items-center gap-1 self-start pl-28"
 					aria-label={`${t('rules.editTemplateTranslations')} ${label} ${template.alternativeIngredientName}`}
 					onClick={() =>
 						setTranslatingTemplateField({
@@ -532,7 +532,7 @@ export function RulesPage() {
 									</button>
 									<button
 										type="button"
-										className="flex items-center gap-1 self-start"
+										className="flex cursor-pointer items-center gap-1 self-start"
 										aria-label={`${t('rules.editAlternativeTranslations')} ${template.alternativeIngredientName}`}
 										onClick={() =>
 											setTranslatingAlternative({

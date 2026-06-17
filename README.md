@@ -88,3 +88,31 @@ src/
 
 Adding an entity CRUD screen later is: a page under `pages/`, a route in
 `routes/router.tsx`, and an entry in `layout/navItems.ts`.
+
+## Docker deploy
+
+This repository includes a static web container:
+- Build stage: Node + Vite
+- Runtime stage: Nginx serving `dist/`
+
+### Build image
+
+```bash
+docker build -t dietwise-backoffice:local .
+```
+
+The env variable `VITE_BASE_PATH` controls the context path, so building like:
+
+```bash
+docker build --build-arg VITE_BASE_PATH=/dietwise-backoffice/ -t dietwise-backoffice:test .
+```
+
+Makes the app available at `http://localhost:5173/recipewatch`.
+
+To set backend hosts at build time:
+
+```bash
+VITE_AUTH_SERVER_HOST=https://auth.example.com/realms/dietwise \
+VITE_API_SERVER_HOST=https://api.example.com/api/v1 \
+docker build -t dietwise-backoffice:local .
+```
