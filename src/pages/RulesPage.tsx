@@ -430,7 +430,7 @@ export function RulesPage() {
 	}
 
 	return (
-		<div>
+		<div className="flex h-full flex-col">
 			<h1 className="mb-4 text-xl font-semibold">{t('rules.title')}</h1>
 			{conflict ? (
 				<div className="alert alert-warning mb-4">
@@ -479,146 +479,151 @@ export function RulesPage() {
 				</button>
 				{isDuplicate ? <span className="text-error text-sm">{t('rules.duplicateRule')}</span> : null}
 			</div>
-			<table className="table">
-				<thead>
-					<tr>
-						<th className="px-0 py-4">{t('rules.columnRecommendation')}</th>
-						<th className="px-0 py-4">{t('rules.columnTriggerIngredient')}</th>
-						<th className="px-0 py-4">{t('rules.columnRoleOrTechnique')}</th>
-						<th className="px-0 py-4">{t('rules.columnRationale')}</th>
-						<th className="px-0 py-4">{t('rules.columnActions')}</th>
-					</tr>
-				</thead>
-				<tbody>
-					{rules.map((rule) => {
-						const isNew = rule.changeState === 'NEW';
-						const pending = rule.changeState !== 'UNCHANGED';
-						const rationaleChanged = rule.changedFields.includes('RATIONALE');
-						const triggerChanged = rule.changedFields.includes('TRIGGER_INGREDIENT');
-						const roleChanged = rule.changedFields.includes('ROLE_OR_TECHNIQUE');
-						const roleId = rule.roleOrTechniqueId;
-						const rowClass = isNew ? 'bg-success/10' : rule.active ? '' : 'bg-error/10';
-						return (
-							<tr key={rule.id} className={rowClass}>
-								<td className="px-0 py-1">{rule.recommendation}</td>
-								<td className={triggerChanged ? 'bg-warning/10 px-0 py-1' : 'px-0 py-1'}>
-									<div className="flex items-center gap-2">
-										<button
-											type="button"
-											className="link link-hover"
-											aria-label={t('rules.editTriggerIngredient')}
-											onClick={() =>
-												setEditing({ kind: 'trigger', id: rule.triggerIngredientId })
-											}
-										>
-											{rule.triggerIngredient}
-										</button>
-										<button
-											type="button"
-											className="flex cursor-pointer gap-1"
-											aria-label={t('rules.editTriggerTranslations')}
-											onClick={() =>
-												setTranslatingReference({
-													kind: 'trigger',
-													id: rule.triggerIngredientId,
-													englishName: rule.triggerIngredient,
-												})
-											}
-										>
-											{translationChips(rule.triggerIngredientTranslations)}
-										</button>
-									</div>
-								</td>
-								<td className={roleChanged ? 'bg-warning/10 px-0 py-1' : 'px-0 py-1'}>
-									{roleId === null ? (
-										EMPTY
-									) : (
+			<div className="min-h-0 flex-1 overflow-auto">
+				<table className="table-pin-rows table min-w-[915px]">
+					<thead>
+						<tr>
+							<th className="px-0 py-4">{t('rules.columnRecommendation')}</th>
+							<th className="px-0 py-4">{t('rules.columnTriggerIngredient')}</th>
+							<th className="px-0 py-4">{t('rules.columnRoleOrTechnique')}</th>
+							<th className="px-0 py-4">{t('rules.columnRationale')}</th>
+							<th className="px-0 py-4">{t('rules.columnActions')}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{rules.map((rule) => {
+							const isNew = rule.changeState === 'NEW';
+							const pending = rule.changeState !== 'UNCHANGED';
+							const rationaleChanged = rule.changedFields.includes('RATIONALE');
+							const triggerChanged = rule.changedFields.includes('TRIGGER_INGREDIENT');
+							const roleChanged = rule.changedFields.includes('ROLE_OR_TECHNIQUE');
+							const roleId = rule.roleOrTechniqueId;
+							const rowClass = isNew ? 'bg-success/10' : rule.active ? '' : 'bg-error/10';
+							return (
+								<tr key={rule.id} className={rowClass}>
+									<td className="px-0 py-1">{rule.recommendation}</td>
+									<td className={triggerChanged ? 'bg-warning/10 px-0 py-1' : 'px-0 py-1'}>
 										<div className="flex items-center gap-2">
 											<button
 												type="button"
 												className="link link-hover"
-												aria-label={t('rules.editRoleOrTechnique')}
-												onClick={() => setEditing({ kind: 'role', id: roleId })}
+												aria-label={t('rules.editTriggerIngredient')}
+												onClick={() =>
+													setEditing({ kind: 'trigger', id: rule.triggerIngredientId })
+												}
 											>
-												{rule.roleOrTechnique}
+												{rule.triggerIngredient}
 											</button>
 											<button
 												type="button"
 												className="flex cursor-pointer gap-1"
-												aria-label={t('rules.editRoleTranslations')}
+												aria-label={t('rules.editTriggerTranslations')}
 												onClick={() =>
 													setTranslatingReference({
-														kind: 'role',
-														id: roleId,
-														englishName: rule.roleOrTechnique ?? '',
+														kind: 'trigger',
+														id: rule.triggerIngredientId,
+														englishName: rule.triggerIngredient,
 													})
 												}
 											>
-												{translationChips(rule.roleOrTechniqueTranslations)}
+												{translationChips(rule.triggerIngredientTranslations)}
 											</button>
 										</div>
-									)}
-								</td>
-								<td className="px-0 py-1">
-									<div className="flex items-center gap-2">
-										<input
-											type="text"
-											className={`input input-sm input-bordered min-w-0 flex-1 ${rationaleChanged ? 'border-warning bg-warning/10' : ''}`}
-											value={drafts[rule.id] ?? rule.rationale ?? ''}
-											aria-label={t('rules.rationaleEditLabel')}
-											onChange={(event) => onDraftChange(rule.id, event.target.value)}
-											onBlur={() => commitRationale(rule)}
-										/>
-										<button
-											type="button"
-											className="flex cursor-pointer gap-1"
-											aria-label={t('rules.editTranslations')}
-											onClick={() =>
-												setTranslating({ ruleId: rule.id, englishRationale: rule.rationale })
-											}
-										>
-											{translationChips(rule.rationaleTranslations)}
-										</button>
-									</div>
-								</td>
-								<td className="px-0 py-1">
-									<div className="flex items-center gap-2">
-										{pending ? (
-											<span className="badge badge-warning">{t('rules.pendingBadge')}</span>
-										) : null}
-										{rationaleChanged ? (
-											<button
-												type="button"
-												className="btn btn-ghost btn-xs"
-												onClick={() => commitRevert(rule)}
-											>
-												{t('rules.revert')}
-											</button>
-										) : null}
-										{isNew ? (
-											<button
-												type="button"
-												className="btn btn-ghost btn-xs"
-												onClick={() => commitDiscard(rule)}
-											>
-												{t('rules.discard')}
-											</button>
+									</td>
+									<td className={roleChanged ? 'bg-warning/10 px-0 py-1' : 'px-0 py-1'}>
+										{roleId === null ? (
+											EMPTY
 										) : (
+											<div className="flex items-center gap-2">
+												<button
+													type="button"
+													className="link link-hover"
+													aria-label={t('rules.editRoleOrTechnique')}
+													onClick={() => setEditing({ kind: 'role', id: roleId })}
+												>
+													{rule.roleOrTechnique}
+												</button>
+												<button
+													type="button"
+													className="flex cursor-pointer gap-1"
+													aria-label={t('rules.editRoleTranslations')}
+													onClick={() =>
+														setTranslatingReference({
+															kind: 'role',
+															id: roleId,
+															englishName: rule.roleOrTechnique ?? '',
+														})
+													}
+												>
+													{translationChips(rule.roleOrTechniqueTranslations)}
+												</button>
+											</div>
+										)}
+									</td>
+									<td className="px-0 py-1">
+										<div className="flex items-center gap-2">
+											<input
+												type="text"
+												className={`input input-sm input-bordered min-w-0 flex-1 ${rationaleChanged ? 'border-warning bg-warning/10' : ''}`}
+												value={drafts[rule.id] ?? rule.rationale ?? ''}
+												aria-label={t('rules.rationaleEditLabel')}
+												onChange={(event) => onDraftChange(rule.id, event.target.value)}
+												onBlur={() => commitRationale(rule)}
+											/>
 											<button
 												type="button"
-												className="btn btn-ghost btn-xs"
-												onClick={() => commitSetActive(rule)}
+												className="flex cursor-pointer gap-1"
+												aria-label={t('rules.editTranslations')}
+												onClick={() =>
+													setTranslating({
+														ruleId: rule.id,
+														englishRationale: rule.rationale,
+													})
+												}
 											>
-												{rule.active ? t('rules.deactivate') : t('rules.activate')}
+												{translationChips(rule.rationaleTranslations)}
 											</button>
-										)}
-									</div>
-								</td>
-							</tr>
-						);
-					})}
-				</tbody>
-			</table>
+										</div>
+									</td>
+									<td className="px-0 py-1">
+										<div className="flex items-center gap-2">
+											{pending ? (
+												<span className="badge badge-warning">{t('rules.pendingBadge')}</span>
+											) : null}
+											{rationaleChanged ? (
+												<button
+													type="button"
+													className="btn btn-ghost btn-xs"
+													onClick={() => commitRevert(rule)}
+												>
+													{t('rules.revert')}
+												</button>
+											) : null}
+											{isNew ? (
+												<button
+													type="button"
+													className="btn btn-ghost btn-xs"
+													onClick={() => commitDiscard(rule)}
+												>
+													{t('rules.discard')}
+												</button>
+											) : (
+												<button
+													type="button"
+													className="btn btn-ghost btn-xs"
+													onClick={() => commitSetActive(rule)}
+												>
+													{rule.active ? t('rules.deactivate') : t('rules.activate')}
+												</button>
+											)}
+										</div>
+									</td>
+								</tr>
+							);
+						})}
+					</tbody>
+				</table>
+			</div>
 			{editDialog}
 			{referenceTranslationsDialog}
 			{translationsDialog}

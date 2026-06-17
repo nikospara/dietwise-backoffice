@@ -621,9 +621,9 @@ describe('RulesPage', () => {
 		render(<RulesPage />);
 
 		const rationaleCell = (await screen.findByLabelText('rules.rationaleEditLabel')).closest('td') as HTMLElement;
-		expect(within(rationaleCell).getByText('EL').className).toContain('badge-warning');
-		expect(within(rationaleCell).getByText('LT').className).toContain('badge-ghost');
-		expect(within(rationaleCell).getByText('NL').className).toContain('badge-success');
+		expect(within(rationaleCell).getByText('EL').closest('.badge')?.className).toContain('badge-warning');
+		expect(within(rationaleCell).getByText('LT').closest('.badge')?.className).toContain('badge-ghost');
+		expect(within(rationaleCell).getByText('NL').closest('.badge')?.className).toContain('badge-success');
 	});
 
 	it('shows per-language trigger and role translation completeness chips styled by state', async () => {
@@ -638,11 +638,11 @@ describe('RulesPage', () => {
 		render(<RulesPage />);
 
 		const triggerCell = (await screen.findByText('Beef')).closest('td') as HTMLElement;
-		expect(within(triggerCell).getByText('EL').className).toContain('badge-success');
-		expect(within(triggerCell).getByText('LT').className).toContain('badge-warning');
-		expect(within(triggerCell).getByText('NL').className).toContain('badge-ghost');
+		expect(within(triggerCell).getByText('EL').closest('.badge')?.className).toContain('badge-success');
+		expect(within(triggerCell).getByText('LT').closest('.badge')?.className).toContain('badge-warning');
+		expect(within(triggerCell).getByText('NL').closest('.badge')?.className).toContain('badge-ghost');
 		const roleCell = screen.getByText('minced in sauce').closest('td') as HTMLElement;
-		expect(within(roleCell).getByText('NL').className).toContain('badge-success');
+		expect(within(roleCell).getByText('NL').closest('.badge')?.className).toContain('badge-success');
 	});
 
 	it('stages a trigger ingredient translation from the translations dialog against its version', async () => {
