@@ -22,14 +22,17 @@ import {
 	revertRationaleTranslation,
 	revertRoleOrTechnique,
 	revertRoleOrTechniqueTranslation,
+	revertSuggestionTemplateField,
 	revertTriggerIngredient,
 	revertTriggerIngredientTranslation,
 	setActive,
 	stageRationale,
 	stageRationaleTranslation,
 	stageRoleOrTechniqueTranslation,
+	stageSuggestionTemplateField,
 	stageTriggerIngredientTranslation,
 	type Rule,
+	type SuggestionTemplate,
 	type TranslationState,
 } from '@/api/rules';
 import { RulesPage } from './RulesPage';
@@ -51,6 +54,8 @@ vi.mock('@/api/rules', () => ({
 	editRoleOrTechnique: vi.fn(),
 	revertTriggerIngredient: vi.fn(),
 	revertRoleOrTechnique: vi.fn(),
+	stageSuggestionTemplateField: vi.fn(),
+	revertSuggestionTemplateField: vi.fn(),
 	fetchRationaleTranslations: vi.fn(),
 	stageRationaleTranslation: vi.fn(),
 	revertRationaleTranslation: vi.fn(),
@@ -89,6 +94,25 @@ const stageTriggerIngredientTranslationMock = vi.mocked(stageTriggerIngredientTr
 const revertTriggerIngredientTranslationMock = vi.mocked(revertTriggerIngredientTranslation);
 const stageRoleOrTechniqueTranslationMock = vi.mocked(stageRoleOrTechniqueTranslation);
 const revertRoleOrTechniqueTranslationMock = vi.mocked(revertRoleOrTechniqueTranslation);
+const stageSuggestionTemplateFieldMock = vi.mocked(stageSuggestionTemplateField);
+const revertSuggestionTemplateFieldMock = vi.mocked(revertSuggestionTemplateField);
+
+function template(
+	id: string,
+	alternativeIngredientName: string,
+	fields: Partial<Omit<SuggestionTemplate, 'id' | 'alternativeIngredientName'>> = {},
+): SuggestionTemplate {
+	return {
+		id,
+		alternativeIngredientName,
+		restriction: null,
+		equivalence: null,
+		techniqueNotes: null,
+		changedFields: [],
+		version: 0,
+		...fields,
+	};
+}
 
 const NO_TRANSLATIONS: Record<Language, TranslationState> = { EL: 'MISSING', LT: 'MISSING', NL: 'MISSING' };
 const NO_STAGED_TRANSLATIONS = {
@@ -195,6 +219,8 @@ describe('RulesPage', () => {
 		revertTriggerIngredientTranslationMock.mockReset();
 		stageRoleOrTechniqueTranslationMock.mockReset();
 		revertRoleOrTechniqueTranslationMock.mockReset();
+		stageSuggestionTemplateFieldMock.mockReset();
+		revertSuggestionTemplateFieldMock.mockReset();
 		fetchNewRuleOptionsMock.mockResolvedValue({
 			recommendations: [],
 			triggerIngredients: [],
@@ -746,20 +772,12 @@ describe('RulesPage', () => {
 	it('lazily loads and shows the suggestion templates when a row is expanded', async () => {
 		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
 		fetchSuggestionTemplatesMock.mockResolvedValue([
-			{
-				id: 's1',
-				alternativeIngredientName: 'Brown lentils (cooked)',
+			template('s1', 'Brown lentils (cooked)', {
 				restriction: 'Not for burgers without binder',
 				equivalence: '1:1',
 				techniqueNotes: 'Dry sauté',
-			},
-			{
-				id: 's2',
-				alternativeIngredientName: 'Soy mince',
-				restriction: null,
-				equivalence: null,
-				techniqueNotes: null,
-			},
+			}),
+			template('s2', 'Soy mince'),
 		]);
 
 		render(<RulesPage />);
@@ -771,7 +789,9 @@ describe('RulesPage', () => {
 
 		expect(await screen.findByText('Brown lentils (cooked)')).not.toBeNull();
 		expect(screen.getByText('Soy mince')).not.toBeNull();
-		expect(screen.getByText('Not for burgers without binder')).not.toBeNull();
+		expect(
+			(screen.getByLabelText('rules.templateRestriction Brown lentils (cooked)') as HTMLInputElement).value,
+		).toBe('Not for burgers without binder');
 		expect(fetchSuggestionTemplatesMock).toHaveBeenCalledWith('1');
 	});
 
@@ -788,15 +808,7 @@ describe('RulesPage', () => {
 
 	it('collapses the suggestion-templates panel when the expander is toggled again', async () => {
 		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
-		fetchSuggestionTemplatesMock.mockResolvedValue([
-			{
-				id: 's1',
-				alternativeIngredientName: 'Brown lentils (cooked)',
-				restriction: null,
-				equivalence: null,
-				techniqueNotes: null,
-			},
-		]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([template('s1', 'Brown lentils (cooked)')]);
 
 		render(<RulesPage />);
 
@@ -818,5 +830,123 @@ describe('RulesPage', () => {
 		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
 
 		expect(await screen.findByText('rules.templatesLoadError')).not.toBeNull();
+	});
+
+	it('lights the Suggestions expander cell when a rule has a staged template change without marking it pending', async () => {
+		fetchRulesMock.mockResolvedValue([{ ...UNCHANGED_RULE, changedFields: ['SUGGESTION_TEMPLATES'] }]);
+
+		render(<RulesPage />);
+
+		const expander = await screen.findByRole('button', { name: 'rules.toggleSuggestions' });
+		expect(expander.closest('td')?.className).toContain('bg-warning');
+		expect(screen.queryByText('rules.pendingBadge')).toBeNull();
+	});
+
+	it('highlights only the suggestion-template field that has a staged change', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			template('s1', 'Brown lentils (cooked)', {
+				restriction: 'Edited',
+				changedFields: ['RESTRICTION'],
+				version: 1,
+			}),
+		]);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+		const restriction = (await screen.findByLabelText(
+			'rules.templateRestriction Brown lentils (cooked)',
+		)) as HTMLInputElement;
+		expect(restriction.value).toBe('Edited');
+		expect(restriction.className).toContain('bg-warning');
+		const equivalence = screen.getByLabelText(
+			'rules.templateEquivalence Brown lentils (cooked)',
+		) as HTMLInputElement;
+		expect(equivalence.className).not.toContain('bg-warning');
+	});
+
+	it('stages a suggestion-template field edit against its version and lights the rule Suggestions flag', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			template('s1', 'Brown lentils (cooked)', { restriction: 'Old restriction' }),
+		]);
+		stageSuggestionTemplateFieldMock.mockResolvedValue(1);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+		const input = (await screen.findByLabelText(
+			'rules.templateRestriction Brown lentils (cooked)',
+		)) as HTMLInputElement;
+		fireEvent.change(input, { target: { value: 'New restriction' } });
+		fireEvent.blur(input);
+
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: 'rules.toggleSuggestions' }).closest('td')?.className).toContain(
+				'bg-warning',
+			),
+		);
+		expect(stageSuggestionTemplateFieldMock).toHaveBeenCalledWith('s1', 'RESTRICTION', 'New restriction', 0);
+	});
+
+	it('does not stage a suggestion-template field left unchanged', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			template('s1', 'Brown lentils (cooked)', { restriction: 'Old restriction' }),
+		]);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+		const input = (await screen.findByLabelText(
+			'rules.templateRestriction Brown lentils (cooked)',
+		)) as HTMLInputElement;
+		fireEvent.blur(input);
+
+		expect(stageSuggestionTemplateFieldMock).not.toHaveBeenCalled();
+	});
+
+	it('reverts a staged suggestion-template field against its version and refreshes', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock
+			.mockResolvedValueOnce([
+				template('s1', 'Brown lentils (cooked)', {
+					restriction: 'Staged restriction',
+					changedFields: ['RESTRICTION'],
+					version: 2,
+				}),
+			])
+			.mockResolvedValueOnce([template('s1', 'Brown lentils (cooked)', { restriction: 'Master restriction' })]);
+		revertSuggestionTemplateFieldMock.mockResolvedValue(undefined);
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+		await screen.findByLabelText('rules.templateRestriction Brown lentils (cooked)');
+		fireEvent.click(screen.getByText('rules.revert'));
+
+		await waitFor(() => expect(revertSuggestionTemplateFieldMock).toHaveBeenCalledWith('s1', 'RESTRICTION', 2));
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
+	});
+
+	it('warns and refreshes the grid when staging a suggestion-template field is rejected as stale', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([
+			template('s1', 'Brown lentils (cooked)', { restriction: 'Old restriction' }),
+		]);
+		stageSuggestionTemplateFieldMock.mockRejectedValue(new ApiError(409, 'conflict'));
+
+		render(<RulesPage />);
+
+		fireEvent.click(await screen.findByRole('button', { name: 'rules.toggleSuggestions' }));
+		const input = (await screen.findByLabelText(
+			'rules.templateRestriction Brown lentils (cooked)',
+		)) as HTMLInputElement;
+		fireEvent.change(input, { target: { value: 'New restriction' } });
+		fireEvent.blur(input);
+
+		expect(await screen.findByText('rules.staleReload')).not.toBeNull();
+		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
 	});
 });

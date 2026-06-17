@@ -22,17 +22,20 @@ import {
 	revertRationaleTranslation,
 	revertRoleOrTechnique,
 	revertRoleOrTechniqueTranslation,
+	revertSuggestionTemplateField,
 	revertTriggerIngredient,
 	revertTriggerIngredientTranslation,
 	setActive,
 	stageRationale,
 	stageRationaleTranslation,
 	stageRoleOrTechniqueTranslation,
+	stageSuggestionTemplateField,
 	stageTriggerIngredientTranslation,
 	type NewRuleOptions,
 	type ReferenceOption,
 	type Rule,
 	type SuggestionTemplate,
+	type TemplateField,
 	type TranslationState,
 } from '@/api/rules';
 import { Combobox } from '@/components/Combobox';
@@ -61,6 +64,13 @@ const translationChips = (states: Record<Language, TranslationState>) =>
 
 const EMPTY = '—';
 
+const templateFieldValue = (template: SuggestionTemplate, field: TemplateField): string | null =>
+	field === 'RESTRICTION'
+		? template.restriction
+		: field === 'EQUIVALENCE'
+			? template.equivalence
+			: template.techniqueNotes;
+
 export function RulesPage() {
 	const { t } = useTranslation();
 	const [rules, setRules] = useState<Rule[] | null>(null);
@@ -78,12 +88,14 @@ export function RulesPage() {
 	const [templatesByRule, setTemplatesByRule] = useState<Record<string, SuggestionTemplate[] | 'loading' | 'error'>>(
 		{},
 	);
+	const [templateDrafts, setTemplateDrafts] = useState<Record<string, string>>({});
 
 	const reload = useCallback(() => {
 		fetchRules()
 			.then((loaded) => {
 				setRules(loaded);
 				setDrafts({});
+				setTemplateDrafts({});
 				setFailed(false);
 			})
 			.catch(() => setFailed(true));
@@ -206,6 +218,110 @@ export function RulesPage() {
 		}
 	};
 
+	const reloadTemplates = (ruleId: string) => {
+		fetchSuggestionTemplates(ruleId)
+			.then((loaded) => setTemplatesByRule((current) => ({ ...current, [ruleId]: loaded })))
+			.catch(() => setTemplatesByRule((current) => ({ ...current, [ruleId]: 'error' })));
+	};
+
+	const onTemplateDraftChange = (templateId: string, field: TemplateField, value: string) => {
+		setTemplateDrafts((current) => ({ ...current, [`${templateId}:${field}`]: value }));
+	};
+
+	const commitTemplateField = async (ruleId: string, template: SuggestionTemplate, field: TemplateField) => {
+		const draft = templateDrafts[`${template.id}:${field}`];
+		if (draft === undefined || draft === (templateFieldValue(template, field) ?? '')) {
+			return;
+		}
+		const value = draft === '' ? null : draft;
+		try {
+			const version = await stageSuggestionTemplateField(template.id, field, value, template.version);
+			setConflict(false);
+			setTemplatesByRule((current) => {
+				const templates = current[ruleId];
+				if (!Array.isArray(templates)) {
+					return current;
+				}
+				return {
+					...current,
+					[ruleId]: templates.map((candidate) =>
+						candidate.id === template.id
+							? {
+									...candidate,
+									restriction: field === 'RESTRICTION' ? value : candidate.restriction,
+									equivalence: field === 'EQUIVALENCE' ? value : candidate.equivalence,
+									techniqueNotes: field === 'TECHNIQUE_NOTES' ? value : candidate.techniqueNotes,
+									version,
+									changedFields: candidate.changedFields.includes(field)
+										? candidate.changedFields
+										: [...candidate.changedFields, field],
+								}
+							: candidate,
+					),
+				};
+			});
+			setRules(
+				(current) =>
+					current?.map((r) =>
+						r.id === ruleId && !r.changedFields.includes('SUGGESTION_TEMPLATES')
+							? { ...r, changedFields: [...r.changedFields, 'SUGGESTION_TEMPLATES'] }
+							: r,
+					) ?? null,
+			);
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reload();
+				reloadTemplates(ruleId);
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
+	const commitRevertTemplateField = async (ruleId: string, template: SuggestionTemplate, field: TemplateField) => {
+		try {
+			await revertSuggestionTemplateField(template.id, field, template.version);
+			setConflict(false);
+			reload();
+			reloadTemplates(ruleId);
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reload();
+				reloadTemplates(ruleId);
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
+	const renderTemplateField = (ruleId: string, template: SuggestionTemplate, field: TemplateField, label: string) => {
+		const changed = template.changedFields.includes(field);
+		return (
+			<div className="flex items-center gap-2">
+				<span className="w-28 shrink-0 opacity-70">{label}</span>
+				<input
+					type="text"
+					className={`input input-xs input-bordered min-w-0 flex-1 ${changed ? 'border-warning bg-warning/10' : ''}`}
+					value={templateDrafts[`${template.id}:${field}`] ?? templateFieldValue(template, field) ?? ''}
+					aria-label={`${label} ${template.alternativeIngredientName}`}
+					onChange={(event) => onTemplateDraftChange(template.id, field, event.target.value)}
+					onBlur={() => commitTemplateField(ruleId, template, field)}
+				/>
+				{changed ? (
+					<button
+						type="button"
+						className="btn btn-ghost btn-xs"
+						onClick={() => commitRevertTemplateField(ruleId, template, field)}
+					>
+						{t('rules.revert')}
+					</button>
+				) : null}
+			</div>
+		);
+	};
+
 	const renderTemplatesPanel = (ruleId: string) => {
 		const state = templatesByRule[ruleId];
 		if (state === undefined || state === 'loading') {
@@ -228,14 +344,16 @@ export function RulesPage() {
 					{state.map((template) => (
 						<div key={template.id} className="border-base-300 bg-base-100 rounded border p-2">
 							<div className="font-medium">{template.alternativeIngredientName}</div>
-							<dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-sm">
-								<dt className="opacity-70">{t('rules.templateRestriction')}</dt>
-								<dd>{template.restriction ?? EMPTY}</dd>
-								<dt className="opacity-70">{t('rules.templateEquivalence')}</dt>
-								<dd>{template.equivalence ?? EMPTY}</dd>
-								<dt className="opacity-70">{t('rules.templateTechniqueNotes')}</dt>
-								<dd>{template.techniqueNotes ?? EMPTY}</dd>
-							</dl>
+							<div className="mt-1 flex flex-col gap-1 text-sm">
+								{renderTemplateField(ruleId, template, 'RESTRICTION', t('rules.templateRestriction'))}
+								{renderTemplateField(ruleId, template, 'EQUIVALENCE', t('rules.templateEquivalence'))}
+								{renderTemplateField(
+									ruleId,
+									template,
+									'TECHNIQUE_NOTES',
+									t('rules.templateTechniqueNotes'),
+								)}
+							</div>
 						</div>
 					))}
 				</div>
@@ -562,12 +680,13 @@ export function RulesPage() {
 							const rationaleChanged = rule.changedFields.includes('RATIONALE');
 							const triggerChanged = rule.changedFields.includes('TRIGGER_INGREDIENT');
 							const roleChanged = rule.changedFields.includes('ROLE_OR_TECHNIQUE');
+							const suggestionsChanged = rule.changedFields.includes('SUGGESTION_TEMPLATES');
 							const roleId = rule.roleOrTechniqueId;
 							const rowClass = isNew ? 'bg-success/10' : rule.active ? '' : 'bg-error/10';
 							const isExpanded = expandedRuleIds.has(rule.id);
 							return [
 								<tr key={rule.id} className={rowClass}>
-									<td className="px-0 py-1">
+									<td className={suggestionsChanged ? 'bg-warning/10 px-0 py-1' : 'px-0 py-1'}>
 										<button
 											type="button"
 											className="btn btn-ghost btn-xs"

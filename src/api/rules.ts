@@ -2,8 +2,12 @@ import { apiFetch } from '@/api/client';
 
 export type RuleChangeState = 'UNCHANGED' | 'CHANGED' | 'NEW';
 
-/** A cell of a Rule that can carry a pending change, highlighted independently in the grid. */
-export type RuleField = 'RATIONALE' | 'ACTIVE' | 'TRIGGER_INGREDIENT' | 'ROLE_OR_TECHNIQUE';
+/** A cell of a Rule that can carry a pending change, highlighted independently in the grid. `SUGGESTION_TEMPLATES`
+ * lights the Suggestions affordance when any of the Rule's templates has a Staged Change. */
+export type RuleField = 'RATIONALE' | 'ACTIVE' | 'TRIGGER_INGREDIENT' | 'ROLE_OR_TECHNIQUE' | 'SUGGESTION_TEMPLATES';
+
+/** One of a Suggestion Template's editable English text fields. */
+export type TemplateField = 'RESTRICTION' | 'EQUIVALENCE' | 'TECHNIQUE_NOTES';
 
 /** A non-English language a Rule's rationale and shared entities can be translated into. English is the master/fallback. */
 export type Language = 'EL' | 'LT' | 'NL';
@@ -69,20 +73,25 @@ export interface Rule {
 	version: number;
 }
 
-/** One of a Rule's Suggestion Templates as shown in the backoffice panel. Any of the three swap-note texts may be absent. */
+/** One of a Rule's Suggestion Templates as shown in the backoffice panel: effective values (published master overlaid by
+ * any Staged Change). Any of the three swap-note texts may be absent. */
 export interface SuggestionTemplate {
 	id: string;
 	alternativeIngredientName: string;
 	restriction: string | null;
 	equivalence: string | null;
 	techniqueNotes: string | null;
+	/** Which of the three English text fields carry a pending change. */
+	changedFields: TemplateField[];
+	/** Working Copy version to base the next edit on (0 when the template has no Staged Change). */
+	version: number;
 }
 
 export function fetchRules(): Promise<Rule[]> {
 	return apiFetch<Rule[]>('/rules');
 }
 
-/** Fetches a Rule's published Suggestion Templates, ordered as shown in the panel. */
+/** Fetches a Rule's Suggestion Templates (master overlaid by the Working Copy), ordered as shown in the panel. */
 export function fetchSuggestionTemplates(ruleId: string): Promise<SuggestionTemplate[]> {
 	return apiFetch<SuggestionTemplate[]>(`/rules/${ruleId}/suggestion-templates`);
 }
@@ -109,6 +118,36 @@ export function stageRationale(id: string, rationale: string | null, baseVersion
  */
 export function revertRationale(id: string, baseVersion: number): Promise<void> {
 	return apiFetch<void>(`/rules/${id}/rationale?baseVersion=${baseVersion}`, { method: 'DELETE' });
+}
+
+/**
+ * Stages one English field of a Suggestion Template in the Working Copy, leaving published master untouched. Resolves
+ * with the template's new Working Copy version. Rejects with {@link ApiError} status 409 when the base version is stale.
+ */
+export function stageSuggestionTemplateField(
+	templateId: string,
+	field: TemplateField,
+	value: string | null,
+	baseVersion: number,
+): Promise<number> {
+	return apiFetch<StagedVersionResponse>(`/rules/suggestion-templates/${templateId}/${field}`, {
+		method: 'PUT',
+		body: JSON.stringify({ value, baseVersion }),
+	}).then((response) => response.version);
+}
+
+/**
+ * Reverts one staged English field of a Suggestion Template, restoring the published master value and collapsing the
+ * Working Copy row when no override remains. Rejects with {@link ApiError} status 409 when the base version is stale.
+ */
+export function revertSuggestionTemplateField(
+	templateId: string,
+	field: TemplateField,
+	baseVersion: number,
+): Promise<void> {
+	return apiFetch<void>(`/rules/suggestion-templates/${templateId}/${field}?baseVersion=${baseVersion}`, {
+		method: 'DELETE',
+	});
 }
 
 /**
