@@ -211,26 +211,26 @@ export function RulesPage() {
 		}
 	};
 
-	const runAndReload = async (action: () => Promise<unknown>) => {
+	const commit = async (action: () => Promise<unknown>, refresh: () => void = reload) => {
 		try {
 			await action();
 			setConflict(false);
-			reload();
+			refresh();
 		} catch (error) {
 			if (error instanceof ApiError && error.status === 409) {
 				setConflict(true);
-				reload();
+				refresh();
 			} else {
 				setFailed(true);
 			}
 		}
 	};
 
-	const commitRevert = (rule: Rule) => runAndReload(() => revertRationale(rule.id, rule.version));
+	const commitRevert = (rule: Rule) => commit(() => revertRationale(rule.id, rule.version));
 
-	const commitSetActive = (rule: Rule) => runAndReload(() => setActive(rule.id, !rule.active, rule.version));
+	const commitSetActive = (rule: Rule) => commit(() => setActive(rule.id, !rule.active, rule.version));
 
-	const commitDiscard = (rule: Rule) => runAndReload(() => discardNewRule(rule.id, rule.version));
+	const commitDiscard = (rule: Rule) => commit(() => discardNewRule(rule.id, rule.version));
 
 	const toggleSuggestions = (ruleId: string) => {
 		const willExpand = !expandedRuleIds.has(ruleId);
@@ -257,25 +257,20 @@ export function RulesPage() {
 		}
 	};
 
-	const commitAddTemplate = async (ruleId: string, alternativeIngredientId: string) => {
+	const commitAddTemplate = (ruleId: string, alternativeIngredientId: string) => {
 		setAddNoticeRuleId(null);
-		try {
-			const added = await addSuggestionTemplate(ruleId, alternativeIngredientId);
-			setConflict(false);
-			if (!added.created) {
-				setAddNoticeRuleId(ruleId);
-			}
-			reload();
-			reloadTemplates(ruleId);
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 409) {
-				setConflict(true);
+		return commit(
+			async () => {
+				const added = await addSuggestionTemplate(ruleId, alternativeIngredientId);
+				if (!added.created) {
+					setAddNoticeRuleId(ruleId);
+				}
+			},
+			() => {
 				reload();
 				reloadTemplates(ruleId);
-			} else {
-				setFailed(true);
-			}
-		}
+			},
+		);
 	};
 
 	const commitCreateAlternative = async (ruleId: string, name: string) => {
@@ -298,22 +293,14 @@ export function RulesPage() {
 		}
 	};
 
-	const commitDiscardTemplate = async (ruleId: string, template: SuggestionTemplate) => {
-		try {
-			await discardSuggestionTemplate(template.id, template.version);
-			setConflict(false);
-			reload();
-			reloadTemplates(ruleId);
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 409) {
-				setConflict(true);
+	const commitDiscardTemplate = (ruleId: string, template: SuggestionTemplate) =>
+		commit(
+			() => discardSuggestionTemplate(template.id, template.version),
+			() => {
 				reload();
 				reloadTemplates(ruleId);
-			} else {
-				setFailed(true);
-			}
-		}
-	};
+			},
+		);
 
 	const reloadTemplates = (ruleId: string) => {
 		fetchSuggestionTemplates(ruleId)
@@ -377,82 +364,46 @@ export function RulesPage() {
 		}
 	};
 
-	const commitRevertTemplateField = async (ruleId: string, template: SuggestionTemplate, field: TemplateField) => {
-		try {
-			await revertSuggestionTemplateField(template.id, field, template.version);
-			setConflict(false);
-			reload();
-			reloadTemplates(ruleId);
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 409) {
-				setConflict(true);
+	const commitRevertTemplateField = (ruleId: string, template: SuggestionTemplate, field: TemplateField) =>
+		commit(
+			() => revertSuggestionTemplateField(template.id, field, template.version),
+			() => {
 				reload();
 				reloadTemplates(ruleId);
-			} else {
-				setFailed(true);
-			}
-		}
-	};
+			},
+		);
 
-	const commitSetActiveTemplate = async (ruleId: string, template: SuggestionTemplate) => {
-		try {
-			await setActiveSuggestionTemplate(template.id, !template.active, template.version);
-			setConflict(false);
-			reload();
-			reloadTemplates(ruleId);
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 409) {
-				setConflict(true);
+	const commitSetActiveTemplate = (ruleId: string, template: SuggestionTemplate) =>
+		commit(
+			() => setActiveSuggestionTemplate(template.id, !template.active, template.version),
+			() => {
 				reload();
 				reloadTemplates(ruleId);
-			} else {
-				setFailed(true);
-			}
-		}
-	};
+			},
+		);
 
-	const commitStageTemplateTranslation = async (
+	const commitStageTemplateTranslation = (
 		target: TemplateTranslationTarget,
 		lang: Language,
 		value: string | null,
 		baseVersion: number,
-	) => {
-		try {
-			await stageTemplateFieldTranslation(target.templateId, target.field, lang, value, baseVersion);
-			setConflict(false);
-			reload();
-			reloadTemplates(target.ruleId);
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 409) {
-				setConflict(true);
+	) =>
+		commit(
+			() => stageTemplateFieldTranslation(target.templateId, target.field, lang, value, baseVersion),
+			() => {
 				reload();
 				reloadTemplates(target.ruleId);
-			} else {
-				setFailed(true);
-			}
-		}
-	};
+			},
+		);
 
-	const commitRevertTemplateTranslation = async (
-		target: TemplateTranslationTarget,
-		lang: Language,
-		baseVersion: number,
-	) => {
-		try {
-			await revertTemplateFieldTranslation(target.templateId, target.field, lang, baseVersion);
-			setConflict(false);
-			reload();
-			reloadTemplates(target.ruleId);
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 409) {
-				setConflict(true);
+	const commitRevertTemplateTranslation = (target: TemplateTranslationTarget, lang: Language, baseVersion: number) =>
+		commit(
+			() => revertTemplateFieldTranslation(target.templateId, target.field, lang, baseVersion),
+			() => {
 				reload();
 				reloadTemplates(target.ruleId);
-			} else {
-				setFailed(true);
-			}
-		}
-	};
+			},
+		);
 
 	const renderTemplateField = (ruleId: string, template: SuggestionTemplate, field: TemplateField, label: string) => {
 		const changed = template.changedFields.includes(field);
@@ -662,47 +613,28 @@ export function RulesPage() {
 	const onCreateRole = (name: string) =>
 		createReference(createRoleOrTechnique, (loaded) => loaded.rolesOrTechniques, setNewRoleOrTechniqueId, name);
 
-	const commitEdit = async (
-		target: EditTarget,
-		name: string,
-		explanationForLlm: string | null,
-		baseVersion: number,
-	) => {
+	const commitEdit = (target: EditTarget, name: string, explanationForLlm: string | null, baseVersion: number) => {
 		const edit = target.kind === 'trigger' ? editTriggerIngredient : editRoleOrTechnique;
 		setEditing(null);
-		try {
-			await edit(target.id, name, explanationForLlm, baseVersion);
-			setConflict(false);
-			reload();
-			refreshOptions();
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 409) {
-				setConflict(true);
+		return commit(
+			() => edit(target.id, name, explanationForLlm, baseVersion),
+			() => {
 				reload();
 				refreshOptions();
-			} else {
-				setFailed(true);
-			}
-		}
+			},
+		);
 	};
 
-	const commitRevertReference = async (target: EditTarget, baseVersion: number) => {
+	const commitRevertReference = (target: EditTarget, baseVersion: number) => {
 		const revert = target.kind === 'trigger' ? revertTriggerIngredient : revertRoleOrTechnique;
 		setEditing(null);
-		try {
-			await revert(target.id, baseVersion);
-			setConflict(false);
-			reload();
-			refreshOptions();
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 409) {
-				setConflict(true);
+		return commit(
+			() => revert(target.id, baseVersion),
+			() => {
 				reload();
 				refreshOptions();
-			} else {
-				setFailed(true);
-			}
-		}
+			},
+		);
 	};
 
 	const commitStageReferenceTranslation = async (
@@ -713,13 +645,13 @@ export function RulesPage() {
 		baseVersion: number,
 	) => {
 		const stage = target.kind === 'trigger' ? stageTriggerIngredientTranslation : stageRoleOrTechniqueTranslation;
-		await runAndReload(() => stage(target.id, lang, name, explanationForLlm, baseVersion));
+		await commit(() => stage(target.id, lang, name, explanationForLlm, baseVersion));
 	};
 
 	const commitRevertReferenceTranslation = async (target: EditTarget, lang: Language, baseVersion: number) => {
 		const revert =
 			target.kind === 'trigger' ? revertTriggerIngredientTranslation : revertRoleOrTechniqueTranslation;
-		await runAndReload(() => revert(target.id, lang, baseVersion));
+		await commit(() => revert(target.id, lang, baseVersion));
 	};
 
 	const openEditAlternative = async (id: string) => {
@@ -741,20 +673,7 @@ export function RulesPage() {
 		expandedRuleIds.forEach((id) => reloadTemplates(id));
 	};
 
-	const commitAlternativeChange = async (action: () => Promise<unknown>) => {
-		try {
-			await action();
-			setConflict(false);
-			reloadAfterAlternativeChange();
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 409) {
-				setConflict(true);
-				reloadAfterAlternativeChange();
-			} else {
-				setFailed(true);
-			}
-		}
-	};
+	const commitAlternativeChange = (action: () => Promise<unknown>) => commit(action, reloadAfterAlternativeChange);
 
 	const commitEditAlternative = async (
 		id: string,
@@ -787,60 +706,22 @@ export function RulesPage() {
 		await commitAlternativeChange(() => revertAlternativeIngredientTranslation(id, lang, baseVersion));
 	};
 
-	const commitStageTranslation = async (
-		ruleId: string,
-		lang: Language,
-		rationale: string | null,
-		baseVersion: number,
-	) => {
-		try {
-			await stageRationaleTranslation(ruleId, lang, rationale, baseVersion);
-			setConflict(false);
-			reload();
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 409) {
-				setConflict(true);
-				reload();
-			} else {
-				setFailed(true);
-			}
-		}
-	};
+	const commitStageTranslation = (ruleId: string, lang: Language, rationale: string | null, baseVersion: number) =>
+		commit(() => stageRationaleTranslation(ruleId, lang, rationale, baseVersion));
 
-	const commitRevertTranslation = async (ruleId: string, lang: Language, baseVersion: number) => {
-		try {
-			await revertRationaleTranslation(ruleId, lang, baseVersion);
-			setConflict(false);
-			reload();
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 409) {
-				setConflict(true);
-				reload();
-			} else {
-				setFailed(true);
-			}
-		}
-	};
+	const commitRevertTranslation = (ruleId: string, lang: Language, baseVersion: number) =>
+		commit(() => revertRationaleTranslation(ruleId, lang, baseVersion));
 
-	const submitNewRule = async () => {
+	const submitNewRule = () => {
 		if (!canCreate || newTriggerIngredientId === null) {
 			return;
 		}
-		try {
+		return commit(async () => {
 			await createRule(newRecommendationId, newTriggerIngredientId, newRoleOrTechniqueId);
-			setConflict(false);
 			setNewRecommendationId('');
 			setNewTriggerIngredientId(null);
 			setNewRoleOrTechniqueId(null);
-			reload();
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 409) {
-				setConflict(true);
-				reload();
-			} else {
-				setFailed(true);
-			}
-		}
+		});
 	};
 
 	if (failed) {
