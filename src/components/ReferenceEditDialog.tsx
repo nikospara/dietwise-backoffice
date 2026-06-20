@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type ReferenceDetails } from '@/api/rules';
+import { type ReferenceDetails } from '@/rules/rules';
 
 interface ReferenceEditDialogProps {
 	referenceId: string;

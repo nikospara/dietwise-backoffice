@@ -4,7 +4,7 @@ import { RequireBackofficeRole } from '@/auth/RequireBackofficeRole';
 import { AppLayout } from '@/layout/AppLayout';
 import { HomePage } from '@/pages/HomePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
-import { RulesPage } from '@/pages/RulesPage';
+import { RulesPage } from '@/rules/RulesPage';
 
 export const router = createBrowserRouter(
 	[

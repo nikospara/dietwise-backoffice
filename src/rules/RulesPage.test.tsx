@@ -50,10 +50,10 @@ import {
 	type SuggestionTemplate,
 	type TemplateField,
 	type TranslationState,
-} from '@/api/rules';
+} from '@/rules/rules';
 import { RulesPage } from './RulesPage';
 
-vi.mock('@/api/rules', () => ({
+vi.mock('@/rules/rules', () => ({
 	fetchRules: vi.fn(),
 	fetchSuggestionTemplates: vi.fn(),
 	addSuggestionTemplate: vi.fn(),

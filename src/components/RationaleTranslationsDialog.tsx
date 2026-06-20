@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type Language, LANGUAGES, type VersionedText } from '@/api/rules';
+import { type Language, LANGUAGES, type VersionedText } from '@/rules/rules';
 
 interface RationaleTranslationsDialogProps {
 	ruleId: string;

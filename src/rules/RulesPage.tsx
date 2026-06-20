@@ -52,7 +52,7 @@ import {
 	type SuggestionTemplate,
 	type TemplateField,
 	type TranslationState,
-} from '@/api/rules';
+} from '@/rules/rules';
 import { Combobox } from '@/components/Combobox';
 import { RationaleTranslationsDialog } from '@/components/RationaleTranslationsDialog';
 import { ReferenceEditDialog } from '@/components/ReferenceEditDialog';

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Language, ReferenceDetails } from '@/api/rules';
+import type { Language, ReferenceDetails } from '@/rules/rules';
 import { ReferenceTranslationsDialog } from './ReferenceTranslationsDialog';
 
 vi.mock('react-i18next', () => ({
