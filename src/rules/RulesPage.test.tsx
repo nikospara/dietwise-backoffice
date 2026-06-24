@@ -634,7 +634,7 @@ describe('RulesPage', () => {
 		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerIngredient' }));
 
 		const nameInput = (await screen.findByLabelText('rules.editName')) as HTMLInputElement;
-		expect(nameInput.value).toBe('Beef');
+		await waitFor(() => expect(nameInput.value).toBe('Beef'));
 		expect(fetchTriggerIngredientMock).toHaveBeenCalledWith('tb');
 		fireEvent.change(nameInput, { target: { value: 'Bovine' } });
 		fireEvent.click(screen.getByText('rules.editSave'));
@@ -677,8 +677,7 @@ describe('RulesPage', () => {
 		render(<RulesPage />);
 
 		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerIngredient' }));
-		await screen.findByLabelText('rules.editName');
-		fireEvent.click(screen.getByText('rules.editRevert'));
+		fireEvent.click(await screen.findByText('rules.editRevert'));
 
 		await waitFor(() => expect(revertTriggerIngredientMock).toHaveBeenCalledWith('tb', 2));
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
@@ -1409,7 +1408,7 @@ describe('RulesPage', () => {
 
 		const nameInput = (await screen.findByLabelText('rules.editName')) as HTMLInputElement;
 		expect(fetchAlternativeIngredientMock).toHaveBeenCalledWith('s1-alt');
-		expect(nameInput.value).toBe('Smoked tofu cubes');
+		await waitFor(() => expect(nameInput.value).toBe('Smoked tofu cubes'));
 		expect(screen.getByText('rules.editBlastRadius')).toBeTruthy();
 		fireEvent.change(nameInput, { target: { value: 'Smoked tofu' } });
 		fireEvent.click(screen.getByText('rules.editSave'));
@@ -1434,8 +1433,7 @@ describe('RulesPage', () => {
 		fireEvent.click(
 			await screen.findByRole('button', { name: 'rules.editAlternativeIngredient Brown lentils (cooked)' }),
 		);
-		await screen.findByLabelText('rules.editName');
-		fireEvent.click(screen.getByText('rules.editRevert'));
+		fireEvent.click(await screen.findByText('rules.editRevert'));
 
 		await waitFor(() => expect(revertAlternativeIngredientMock).toHaveBeenCalledWith('s1-alt', 2));
 	});

@@ -117,6 +117,7 @@ export function ReferenceTranslationsDialog({
 									type="text"
 									className="input input-sm input-bordered w-full"
 									aria-label={`${lang} ${t('rules.editName')}`}
+									placeholder={englishName || t('rules.editName')}
 									value={draft.name}
 									disabled={current === undefined}
 									onChange={(event) =>
@@ -129,6 +130,7 @@ export function ReferenceTranslationsDialog({
 								<textarea
 									className="textarea textarea-bordered mt-1 w-full"
 									aria-label={`${lang} ${t('rules.editExplanation')}`}
+									placeholder={t('rules.editExplanation')}
 									value={draft.explanation}
 									disabled={current === undefined}
 									onChange={(event) =>

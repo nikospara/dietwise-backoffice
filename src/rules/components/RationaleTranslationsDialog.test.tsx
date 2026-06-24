@@ -41,6 +41,18 @@ describe('RationaleTranslationsDialog', () => {
 		expect(screen.getByText('English rationale.', { exact: false })).not.toBeNull();
 	});
 
+	it('shows the English source as placeholder so an empty field reads as falling back to English', async () => {
+		renderDialog();
+
+		expect(((await screen.findByLabelText('LT')) as HTMLTextAreaElement).placeholder).toBe('English rationale.');
+	});
+
+	it('falls back to the field name as placeholder when there is no English source', async () => {
+		renderDialog({ englishRationale: null });
+
+		expect(((await screen.findByLabelText('LT')) as HTMLTextAreaElement).placeholder).toBe('rules.columnRationale');
+	});
+
 	it('disables save until a language is edited, then stages it against its version', async () => {
 		const { onStage } = renderDialog();
 

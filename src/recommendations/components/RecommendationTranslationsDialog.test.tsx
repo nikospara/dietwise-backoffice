@@ -56,6 +56,28 @@ describe('RecommendationTranslationsDialog', () => {
 		expect(screen.getByText('red meat')).not.toBeNull();
 	});
 
+	it('shows the English source as placeholder so an empty field reads as falling back to English', async () => {
+		renderDialog();
+
+		const ltName = (await screen.findByLabelText('LT recommendations.columnName')) as HTMLInputElement;
+		expect(ltName.placeholder).toBe('Decrease red meat');
+		expect((screen.getByLabelText('LT recommendations.columnComponent') as HTMLInputElement).placeholder).toBe(
+			'red meat',
+		);
+		expect((screen.getByLabelText('LT recommendations.columnExplanation') as HTMLTextAreaElement).placeholder).toBe(
+			'Cured and smoked red meat.',
+		);
+	});
+
+	it('falls back to the field name as placeholder when there is no English source', async () => {
+		renderDialog({ englishExplanation: null });
+
+		const ltExplanation = (await screen.findByLabelText(
+			'LT recommendations.columnExplanation',
+		)) as HTMLTextAreaElement;
+		expect(ltExplanation.placeholder).toBe('recommendations.columnExplanation');
+	});
+
 	it('offers revert only for a staged language and reverts it against its version', async () => {
 		const { onRevert } = renderDialog();
 

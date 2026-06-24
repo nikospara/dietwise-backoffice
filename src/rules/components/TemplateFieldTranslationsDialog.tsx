@@ -103,6 +103,7 @@ export function TemplateFieldTranslationsDialog({
 								<textarea
 									className="textarea textarea-bordered w-full"
 									aria-label={lang}
+									placeholder={englishValue ?? title}
 									value={value}
 									disabled={current === undefined}
 									onChange={(event) => setDrafts((prev) => ({ ...prev, [lang]: event.target.value }))}

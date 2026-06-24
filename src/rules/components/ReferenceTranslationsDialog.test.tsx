@@ -43,6 +43,23 @@ describe('ReferenceTranslationsDialog', () => {
 		expect(screen.getByText('Beef', { exact: false })).not.toBeNull();
 	});
 
+	it('shows the English name as placeholder and the field name for the explanation', async () => {
+		renderDialog();
+
+		expect(((await screen.findByLabelText('LT rules.editName')) as HTMLInputElement).placeholder).toBe('Beef');
+		expect((screen.getByLabelText('LT rules.editExplanation') as HTMLTextAreaElement).placeholder).toBe(
+			'rules.editExplanation',
+		);
+	});
+
+	it('falls back to the field name as placeholder when there is no English name', async () => {
+		renderDialog({ englishName: '' });
+
+		expect(((await screen.findByLabelText('LT rules.editName')) as HTMLInputElement).placeholder).toBe(
+			'rules.editName',
+		);
+	});
+
 	it('offers revert only for a staged language and reverts it against its version', async () => {
 		const { onRevert } = renderDialog();
 

@@ -98,6 +98,7 @@ export function RationaleTranslationsDialog({
 								<textarea
 									className="textarea textarea-bordered w-full"
 									aria-label={lang}
+									placeholder={englishRationale ?? t('rules.columnRationale')}
 									value={value}
 									disabled={current === undefined}
 									onChange={(event) => setDrafts((prev) => ({ ...prev, [lang]: event.target.value }))}

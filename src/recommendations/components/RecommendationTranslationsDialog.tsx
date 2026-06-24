@@ -136,6 +136,7 @@ export function RecommendationTranslationsDialog({
 									type="text"
 									className="input input-sm input-bordered w-full"
 									aria-label={`${lang} ${t('recommendations.columnName')}`}
+									placeholder={englishName}
 									value={draft.name}
 									disabled={current === undefined}
 									onChange={(event) =>
@@ -149,6 +150,7 @@ export function RecommendationTranslationsDialog({
 									type="text"
 									className="input input-sm input-bordered mt-1 w-full"
 									aria-label={`${lang} ${t('recommendations.columnComponent')}`}
+									placeholder={englishComponent}
 									value={draft.component}
 									disabled={current === undefined}
 									onChange={(event) =>
@@ -161,6 +163,7 @@ export function RecommendationTranslationsDialog({
 								<textarea
 									className="textarea textarea-bordered mt-1 w-full"
 									aria-label={`${lang} ${t('recommendations.columnExplanation')}`}
+									placeholder={englishExplanation ?? t('recommendations.columnExplanation')}
 									value={draft.explanation}
 									disabled={current === undefined}
 									onChange={(event) =>
