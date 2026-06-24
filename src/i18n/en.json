@@ -88,7 +88,10 @@
 		"columnExplanation": "Explanation for the LLM",
 		"columnTranslations": "Translations",
 		"weightEncouraged": "Encouraged",
-		"weightLimited": "Limited"
+		"weightLimited": "Limited",
+		"explanationEditLabel": "Edit explanation for the LLM",
+		"revert": "Revert",
+		"staleReload": "Someone changed this recommendation since you loaded it. The grid was refreshed — please redo your edit."
 	},
 	"home": {
 		"welcome": "Welcome, {{name}}",
