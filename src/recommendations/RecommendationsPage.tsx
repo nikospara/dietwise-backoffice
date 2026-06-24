@@ -14,8 +14,8 @@ import {
 	stageExplanation,
 	stageRecommendationTranslation,
 } from '@/recommendations/recommendations';
-import { RecommendationTranslationsDialog } from '@/components/RecommendationTranslationsDialog';
 import { TranslationChips } from '@/components/TranslationChips';
+import { RecommendationTranslationsDialog } from '@/recommendations/components/RecommendationTranslationsDialog';
 
 type TranslationTarget = {
 	recommendationId: string;

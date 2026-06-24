@@ -53,11 +53,11 @@ import {
 	type TemplateField,
 } from '@/rules/rules';
 import { Combobox } from '@/components/Combobox';
-import { RationaleTranslationsDialog } from '@/components/RationaleTranslationsDialog';
-import { ReferenceEditDialog } from '@/components/ReferenceEditDialog';
-import { ReferenceTranslationsDialog } from '@/components/ReferenceTranslationsDialog';
-import { TemplateFieldTranslationsDialog } from '@/components/TemplateFieldTranslationsDialog';
 import { TranslationChips } from '@/components/TranslationChips';
+import { RationaleTranslationsDialog } from '@/rules/components/RationaleTranslationsDialog';
+import { ReferenceEditDialog } from '@/rules/components/ReferenceEditDialog';
+import { ReferenceTranslationsDialog } from '@/rules/components/ReferenceTranslationsDialog';
+import { TemplateFieldTranslationsDialog } from '@/rules/components/TemplateFieldTranslationsDialog';
 
 type EditTarget = { kind: 'trigger' | 'role'; id: string };
 type ReferenceTranslationTarget = { kind: 'trigger' | 'role'; id: string; englishName: string };
