@@ -4,7 +4,8 @@
 	},
 	"nav": {
 		"home": "Home",
-		"rules": "Rules"
+		"rules": "Rules",
+		"recommendations": "Recommendations"
 	},
 	"auth": {
 		"signingIn": "Signing in…",
@@ -76,6 +77,18 @@
 		"selectAlternative": "Choose an alternative ingredient…",
 		"templateAlreadyExists": "This rule already has a template for that alternative!",
 		"discardTemplate": "Discard template"
+	},
+	"recommendations": {
+		"title": "Recommendations",
+		"loading": "Loading recommendations…",
+		"loadError": "Could not load the recommendations. Please try again.",
+		"columnName": "Name",
+		"columnComponent": "Component for Scoring",
+		"columnWeight": "Weight",
+		"columnExplanation": "Explanation for the LLM",
+		"columnTranslations": "Translations",
+		"weightEncouraged": "Encouraged",
+		"weightLimited": "Limited"
 	},
 	"home": {
 		"welcome": "Welcome, {{name}}",

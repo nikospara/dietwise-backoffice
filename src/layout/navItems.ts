@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { FiHome, FiList } from 'react-icons/fi';
+import { FiAward, FiHome, FiList } from 'react-icons/fi';
 
 export interface NavItem {
 	to: string;
@@ -13,4 +13,5 @@ export interface NavItem {
 export const navItems: NavItem[] = [
 	{ to: '/', labelKey: 'nav.home', icon: FiHome, end: true },
 	{ to: '/rules', labelKey: 'nav.rules', icon: FiList },
+	{ to: '/recommendations', labelKey: 'nav.recommendations', icon: FiAward },
 ];
