@@ -51,13 +51,13 @@ import {
 	type Rule,
 	type SuggestionTemplate,
 	type TemplateField,
-	type TranslationState,
 } from '@/rules/rules';
 import { Combobox } from '@/components/Combobox';
 import { RationaleTranslationsDialog } from '@/components/RationaleTranslationsDialog';
 import { ReferenceEditDialog } from '@/components/ReferenceEditDialog';
 import { ReferenceTranslationsDialog } from '@/components/ReferenceTranslationsDialog';
 import { TemplateFieldTranslationsDialog } from '@/components/TemplateFieldTranslationsDialog';
+import { TranslationChips } from '@/components/TranslationChips';
 
 type EditTarget = { kind: 'trigger' | 'role'; id: string };
 type ReferenceTranslationTarget = { kind: 'trigger' | 'role'; id: string; englishName: string };
@@ -69,21 +69,6 @@ type TemplateTranslationTarget = {
 	title: string;
 	englishValue: string | null;
 };
-
-const translationChipClass = (state: TranslationState) =>
-	state === 'STAGED'
-		? 'badge badge-sm badge-warning'
-		: state === 'PRESENT'
-			? 'badge badge-sm badge-success'
-			: 'badge badge-sm badge-ghost';
-
-const translationChips = (states: Record<Language, TranslationState>) =>
-	LANGUAGES.map((lang) => (
-		<span key={lang} className={translationChipClass(states[lang])}>
-			<span className="sm:hidden lg:inline">{lang}</span>
-			<span className="text-[10px] sm:inline lg:hidden">{lang.substring(0, 1)}</span>
-		</span>
-	));
 
 const EMPTY = '—';
 
@@ -443,7 +428,7 @@ export function RulesPage() {
 						})
 					}
 				>
-					{translationChips(template.translations[field])}
+					<TranslationChips languages={LANGUAGES} states={template.translations[field]} />
 				</button>
 			</div>
 		);
@@ -492,7 +477,10 @@ export function RulesPage() {
 											})
 										}
 									>
-										{translationChips(template.alternativeIngredientTranslations)}
+										<TranslationChips
+											languages={LANGUAGES}
+											states={template.alternativeIngredientTranslations}
+										/>
 									</button>
 								</div>
 								<div className="flex items-center gap-2">
@@ -968,7 +956,10 @@ export function RulesPage() {
 													})
 												}
 											>
-												{translationChips(rule.triggerIngredientTranslations)}
+												<TranslationChips
+													languages={LANGUAGES}
+													states={rule.triggerIngredientTranslations}
+												/>
 											</button>
 										</div>
 									</td>
@@ -997,7 +988,10 @@ export function RulesPage() {
 														})
 													}
 												>
-													{translationChips(rule.roleOrTechniqueTranslations)}
+													<TranslationChips
+														languages={LANGUAGES}
+														states={rule.roleOrTechniqueTranslations}
+													/>
 												</button>
 											</div>
 										)}
@@ -1023,7 +1017,10 @@ export function RulesPage() {
 													})
 												}
 											>
-												{translationChips(rule.rationaleTranslations)}
+												<TranslationChips
+													languages={LANGUAGES}
+													states={rule.rationaleTranslations}
+												/>
 											</button>
 										</div>
 									</td>

@@ -3,9 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/client';
 import {
 	type Recommendation,
+	type RecommendationTranslationDetails,
 	fetchRecommendations,
+	fetchRecommendationTranslations,
 	revertExplanation,
+	revertRecommendationTranslation,
 	stageExplanation,
+	stageRecommendationTranslation,
 } from '@/recommendations/recommendations';
 import { RecommendationsPage } from './RecommendationsPage';
 
@@ -13,6 +17,9 @@ vi.mock('@/recommendations/recommendations', () => ({
 	fetchRecommendations: vi.fn(),
 	stageExplanation: vi.fn(),
 	revertExplanation: vi.fn(),
+	fetchRecommendationTranslations: vi.fn(),
+	stageRecommendationTranslation: vi.fn(),
+	revertRecommendationTranslation: vi.fn(),
 	LANGUAGES: ['EL', 'LT', 'NL'],
 }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
@@ -20,6 +27,20 @@ vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => k
 const fetchRecommendationsMock = vi.mocked(fetchRecommendations);
 const stageExplanationMock = vi.mocked(stageExplanation);
 const revertExplanationMock = vi.mocked(revertExplanation);
+const fetchRecommendationTranslationsMock = vi.mocked(fetchRecommendationTranslations);
+const stageRecommendationTranslationMock = vi.mocked(stageRecommendationTranslation);
+const revertRecommendationTranslationMock = vi.mocked(revertRecommendationTranslation);
+
+const TRANSLATIONS: Record<'EL' | 'LT' | 'NL', RecommendationTranslationDetails> = {
+	EL: {
+		name: 'Επεξεργασμένο κρέας',
+		componentForScoring: 'επεξεργασμένο κρέας',
+		explanationForLlm: 'Λιγότερο.',
+		version: 2,
+	},
+	LT: { name: null, componentForScoring: null, explanationForLlm: null, version: 0 },
+	NL: { name: null, componentForScoring: null, explanationForLlm: null, version: 0 },
+};
 
 const LIMITED_RECOMMENDATION: Recommendation = {
 	id: '1',
@@ -55,6 +76,9 @@ describe('RecommendationsPage', () => {
 		fetchRecommendationsMock.mockReset();
 		stageExplanationMock.mockReset();
 		revertExplanationMock.mockReset();
+		fetchRecommendationTranslationsMock.mockReset();
+		stageRecommendationTranslationMock.mockReset();
+		revertRecommendationTranslationMock.mockReset();
 	});
 
 	it('renders one row per recommendation with its name, component and explanation', async () => {
@@ -146,5 +170,60 @@ describe('RecommendationsPage', () => {
 		render(<RecommendationsPage />);
 
 		expect(await screen.findByText('recommendations.loadError')).not.toBeNull();
+	});
+
+	it('opens the translations dialog from the chips and stages a language against its version', async () => {
+		fetchRecommendationsMock.mockResolvedValue([LIMITED_RECOMMENDATION]);
+		fetchRecommendationTranslationsMock.mockResolvedValue(TRANSLATIONS);
+		stageRecommendationTranslationMock.mockResolvedValue(undefined);
+
+		render(<RecommendationsPage />);
+
+		fireEvent.click(await screen.findByLabelText('recommendations.editTranslations'));
+
+		const greekName = (await screen.findByLabelText('EL recommendations.columnName')) as HTMLInputElement;
+		expect(greekName.value).toBe('Επεξεργασμένο κρέας');
+		fireEvent.change(greekName, { target: { value: 'Αλλαγή' } });
+		fireEvent.click(screen.getAllByText('recommendations.translationSave')[0]);
+
+		await waitFor(() =>
+			expect(stageRecommendationTranslationMock).toHaveBeenCalledWith(
+				'1',
+				'EL',
+				'Αλλαγή',
+				'επεξεργασμένο κρέας',
+				'Λιγότερο.',
+				2,
+			),
+		);
+	});
+
+	it('reverts a staged language translation against its version', async () => {
+		fetchRecommendationsMock.mockResolvedValue([LIMITED_RECOMMENDATION]);
+		fetchRecommendationTranslationsMock.mockResolvedValue(TRANSLATIONS);
+		revertRecommendationTranslationMock.mockResolvedValue(undefined);
+
+		render(<RecommendationsPage />);
+
+		fireEvent.click(await screen.findByLabelText('recommendations.editTranslations'));
+		fireEvent.click(await screen.findByText('recommendations.translationRevert'));
+
+		await waitFor(() => expect(revertRecommendationTranslationMock).toHaveBeenCalledWith('1', 'EL', 2));
+	});
+
+	it('warns and refreshes the grid when staging a translation is rejected as stale', async () => {
+		fetchRecommendationsMock.mockResolvedValue([LIMITED_RECOMMENDATION]);
+		fetchRecommendationTranslationsMock.mockResolvedValue(TRANSLATIONS);
+		stageRecommendationTranslationMock.mockRejectedValue(new ApiError(409, 'conflict'));
+
+		render(<RecommendationsPage />);
+
+		fireEvent.click(await screen.findByLabelText('recommendations.editTranslations'));
+		const greekName = (await screen.findByLabelText('EL recommendations.columnName')) as HTMLInputElement;
+		fireEvent.change(greekName, { target: { value: 'Αλλαγή' } });
+		fireEvent.click(screen.getAllByText('recommendations.translationSave')[0]);
+
+		expect(await screen.findByText('recommendations.staleReload')).not.toBeNull();
+		await waitFor(() => expect(fetchRecommendationsMock).toHaveBeenCalledTimes(2));
 	});
 });

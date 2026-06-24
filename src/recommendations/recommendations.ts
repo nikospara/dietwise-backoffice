@@ -49,3 +49,52 @@ export function stageExplanation(id: string, explanationForLlm: string | null, b
 export function revertExplanation(id: string, baseVersion: number): Promise<void> {
 	return apiFetch<void>(`/recommendations/${id}/explanation?baseVersion=${baseVersion}`, { method: 'DELETE' });
 }
+
+/** The effective translation of a Recommendation in one language (published master overlaid by any Staged Change). The
+ * three fields share a single version, so they are staged and reverted together; a field is null when absent. */
+export interface RecommendationTranslationDetails {
+	name: string | null;
+	componentForScoring: string | null;
+	explanationForLlm: string | null;
+	/** Working Copy version to base the next edit on (0 when there is no Staged Change yet). */
+	version: number;
+}
+
+/**
+ * Fetches the effective translation of a Recommendation for each non-English language (master overlaid by any Staged
+ * Change) and the Working Copy version to base an edit on, to pre-fill the translations dialog.
+ */
+export function fetchRecommendationTranslations(
+	id: string,
+): Promise<Record<Language, RecommendationTranslationDetails>> {
+	return apiFetch<Record<Language, RecommendationTranslationDetails>>(`/recommendations/${id}/translations`);
+}
+
+/**
+ * Stages a Recommendation's name, component for scoring and explanation translation for one language in the Working
+ * Copy, leaving published master untouched. A null field clears that part of the translation. Rejects with
+ * {@link ApiError} status 409 when the base version is stale.
+ */
+export function stageRecommendationTranslation(
+	id: string,
+	lang: Language,
+	name: string | null,
+	componentForScoring: string | null,
+	explanationForLlm: string | null,
+	baseVersion: number,
+): Promise<void> {
+	return apiFetch<void>(`/recommendations/${id}/translations/${lang}`, {
+		method: 'PUT',
+		body: JSON.stringify({ name, componentForScoring, explanationForLlm, baseVersion }),
+	});
+}
+
+/**
+ * Reverts a Recommendation's staged translation for one language, restoring the published master translation. Rejects
+ * with {@link ApiError} status 409 when the base version is stale.
+ */
+export function revertRecommendationTranslation(id: string, lang: Language, baseVersion: number): Promise<void> {
+	return apiFetch<void>(`/recommendations/${id}/translations/${lang}?baseVersion=${baseVersion}`, {
+		method: 'DELETE',
+	});
+}

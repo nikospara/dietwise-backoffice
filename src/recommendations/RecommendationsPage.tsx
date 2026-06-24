@@ -7,30 +7,22 @@ import {
 	LANGUAGES,
 	type Recommendation,
 	type RecommendationWeight,
-	type TranslationState,
 	fetchRecommendations,
+	fetchRecommendationTranslations,
 	revertExplanation,
+	revertRecommendationTranslation,
 	stageExplanation,
+	stageRecommendationTranslation,
 } from '@/recommendations/recommendations';
+import { RecommendationTranslationsDialog } from '@/components/RecommendationTranslationsDialog';
+import { TranslationChips } from '@/components/TranslationChips';
 
-const translationChipClass = (state: TranslationState) =>
-	state === 'STAGED'
-		? 'badge badge-sm badge-warning'
-		: state === 'PRESENT'
-			? 'badge badge-sm badge-success'
-			: 'badge badge-sm badge-ghost';
-
-function translationChips(states: Record<Language, TranslationState>) {
-	return (
-		<div className="flex gap-1">
-			{LANGUAGES.map((lang) => (
-				<span key={lang} className={translationChipClass(states[lang])}>
-					{lang}
-				</span>
-			))}
-		</div>
-	);
-}
+type TranslationTarget = {
+	recommendationId: string;
+	englishName: string;
+	englishComponent: string;
+	englishExplanation: string | null;
+};
 
 function WeightIcon({ weight, label }: { weight: RecommendationWeight; label: string }) {
 	const encouraged = weight === 'ENCOURAGED';
@@ -51,6 +43,7 @@ export function RecommendationsPage() {
 	const [drafts, setDrafts] = useState<Record<string, string>>({});
 	const [failed, setFailed] = useState(false);
 	const [conflict, setConflict] = useState(false);
+	const [translating, setTranslating] = useState<TranslationTarget | null>(null);
 
 	const reload = useCallback(() => {
 		fetchRecommendations()
@@ -110,6 +103,45 @@ export function RecommendationsPage() {
 			}
 		}
 	};
+
+	// Staging or reverting a translation refreshes the grid so its chips reflect the new state; a stale base version
+	// warns and refreshes too. The dialog stays open and reconciles its own per-language state.
+	const commit = async (action: () => Promise<unknown>) => {
+		try {
+			await action();
+			setConflict(false);
+			reload();
+		} catch (error) {
+			if (error instanceof ApiError && error.status === 409) {
+				setConflict(true);
+				reload();
+			} else {
+				setFailed(true);
+			}
+		}
+	};
+
+	const commitStageTranslation = (
+		recommendationId: string,
+		lang: Language,
+		name: string | null,
+		componentForScoring: string | null,
+		explanationForLlm: string | null,
+		baseVersion: number,
+	) =>
+		commit(() =>
+			stageRecommendationTranslation(
+				recommendationId,
+				lang,
+				name,
+				componentForScoring,
+				explanationForLlm,
+				baseVersion,
+			),
+		);
+
+	const commitRevertTranslation = (recommendationId: string, lang: Language, baseVersion: number) =>
+		commit(() => revertRecommendationTranslation(recommendationId, lang, baseVersion));
 
 	if (failed) {
 		return (
@@ -180,12 +212,51 @@ export function RecommendationsPage() {
 										) : null}
 									</div>
 								</td>
-								<td className="px-1 py-1">{translationChips(recommendation.translations)}</td>
+								<td className="px-1 py-1">
+									<button
+										type="button"
+										className="flex cursor-pointer gap-1"
+										aria-label={t('recommendations.editTranslations')}
+										onClick={() =>
+											setTranslating({
+												recommendationId: recommendation.id,
+												englishName: recommendation.name,
+												englishComponent: recommendation.componentForScoring,
+												englishExplanation: recommendation.explanationForLlm,
+											})
+										}
+									>
+										<TranslationChips languages={LANGUAGES} states={recommendation.translations} />
+									</button>
+								</td>
 							</tr>
 						))}
 					</tbody>
 				</table>
 			</div>
+			{translating !== null ? (
+				<RecommendationTranslationsDialog
+					recommendationId={translating.recommendationId}
+					englishName={translating.englishName}
+					englishComponent={translating.englishComponent}
+					englishExplanation={translating.englishExplanation}
+					loadTranslations={fetchRecommendationTranslations}
+					onStage={(lang, name, componentForScoring, explanationForLlm, baseVersion) =>
+						commitStageTranslation(
+							translating.recommendationId,
+							lang,
+							name,
+							componentForScoring,
+							explanationForLlm,
+							baseVersion,
+						)
+					}
+					onRevert={(lang, baseVersion) =>
+						commitRevertTranslation(translating.recommendationId, lang, baseVersion)
+					}
+					onCancel={() => setTranslating(null)}
+				/>
+			) : null}
 		</div>
 	);
 }
