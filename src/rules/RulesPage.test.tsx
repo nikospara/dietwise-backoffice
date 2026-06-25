@@ -2,19 +2,26 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/client';
 import {
-	addSuggestionTemplate,
+	type AlternativeIngredientDetails,
 	createAlternativeIngredient,
+	editAlternativeIngredient,
+	fetchAlternativeIngredient,
+	fetchAlternativeIngredientOptions,
+	fetchAlternativeIngredientTranslations,
+	revertAlternativeIngredient,
+	revertAlternativeIngredientTranslation,
+	stageAlternativeIngredientTranslation,
+} from '@/alternativeIngredients/alternativeIngredients';
+import { type Language, type ReferenceDetails, type TranslationState } from '@/components/referenceData';
+import {
+	addSuggestionTemplate,
 	createRoleOrTechnique,
 	createRule,
 	createTriggerIngredient,
 	discardNewRule,
 	discardSuggestionTemplate,
-	editAlternativeIngredient,
 	editRoleOrTechnique,
 	editTriggerIngredient,
-	fetchAlternativeIngredient,
-	fetchAlternativeIngredientOptions,
-	fetchAlternativeIngredientTranslations,
 	fetchNewRuleOptions,
 	fetchRationaleTranslations,
 	fetchRoleOrTechnique,
@@ -24,11 +31,6 @@ import {
 	fetchTemplateFieldTranslations,
 	fetchTriggerIngredient,
 	fetchTriggerIngredientTranslations,
-	type AlternativeIngredientDetails,
-	type Language,
-	type ReferenceDetails,
-	revertAlternativeIngredient,
-	revertAlternativeIngredientTranslation,
 	revertRationale,
 	revertRationaleTranslation,
 	revertRoleOrTechnique,
@@ -39,7 +41,6 @@ import {
 	revertTriggerIngredientTranslation,
 	setActive,
 	setActiveSuggestionTemplate,
-	stageAlternativeIngredientTranslation,
 	stageRationale,
 	stageRationaleTranslation,
 	stageRoleOrTechniqueTranslation,
@@ -49,7 +50,6 @@ import {
 	type Rule,
 	type SuggestionTemplate,
 	type TemplateField,
-	type TranslationState,
 } from '@/rules/rules';
 import { RulesPage } from './RulesPage';
 
@@ -58,8 +58,6 @@ vi.mock('@/rules/rules', () => ({
 	fetchSuggestionTemplates: vi.fn(),
 	addSuggestionTemplate: vi.fn(),
 	discardSuggestionTemplate: vi.fn(),
-	fetchAlternativeIngredientOptions: vi.fn(),
-	createAlternativeIngredient: vi.fn(),
 	stageRationale: vi.fn(),
 	revertRationale: vi.fn(),
 	setActive: vi.fn(),
@@ -74,12 +72,6 @@ vi.mock('@/rules/rules', () => ({
 	editRoleOrTechnique: vi.fn(),
 	revertTriggerIngredient: vi.fn(),
 	revertRoleOrTechnique: vi.fn(),
-	fetchAlternativeIngredient: vi.fn(),
-	editAlternativeIngredient: vi.fn(),
-	revertAlternativeIngredient: vi.fn(),
-	fetchAlternativeIngredientTranslations: vi.fn(),
-	stageAlternativeIngredientTranslation: vi.fn(),
-	revertAlternativeIngredientTranslation: vi.fn(),
 	stageSuggestionTemplateField: vi.fn(),
 	revertSuggestionTemplateField: vi.fn(),
 	setActiveSuggestionTemplate: vi.fn(),
@@ -95,7 +87,16 @@ vi.mock('@/rules/rules', () => ({
 	revertTriggerIngredientTranslation: vi.fn(),
 	stageRoleOrTechniqueTranslation: vi.fn(),
 	revertRoleOrTechniqueTranslation: vi.fn(),
-	LANGUAGES: ['EL', 'LT', 'NL'],
+}));
+vi.mock('@/alternativeIngredients/alternativeIngredients', () => ({
+	fetchAlternativeIngredientOptions: vi.fn(),
+	createAlternativeIngredient: vi.fn(),
+	fetchAlternativeIngredient: vi.fn(),
+	editAlternativeIngredient: vi.fn(),
+	revertAlternativeIngredient: vi.fn(),
+	fetchAlternativeIngredientTranslations: vi.fn(),
+	stageAlternativeIngredientTranslation: vi.fn(),
+	revertAlternativeIngredientTranslation: vi.fn(),
 }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
@@ -633,11 +634,11 @@ describe('RulesPage', () => {
 
 		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerIngredient' }));
 
-		const nameInput = (await screen.findByLabelText('rules.editName')) as HTMLInputElement;
+		const nameInput = (await screen.findByLabelText('reference.editName')) as HTMLInputElement;
 		await waitFor(() => expect(nameInput.value).toBe('Beef'));
 		expect(fetchTriggerIngredientMock).toHaveBeenCalledWith('tb');
 		fireEvent.change(nameInput, { target: { value: 'Bovine' } });
-		fireEvent.click(screen.getByText('rules.editSave'));
+		fireEvent.click(screen.getByText('reference.editSave'));
 
 		await waitFor(() => expect(editTriggerIngredientMock).toHaveBeenCalledWith('tb', 'Bovine', 'Red meat.', 0));
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
@@ -657,9 +658,9 @@ describe('RulesPage', () => {
 
 		fireEvent.click(await screen.findByRole('button', { name: 'rules.editRoleOrTechnique' }));
 
-		const nameInput = (await screen.findByLabelText('rules.editName')) as HTMLInputElement;
+		const nameInput = (await screen.findByLabelText('reference.editName')) as HTMLInputElement;
 		fireEvent.change(nameInput, { target: { value: 'folded through' } });
-		fireEvent.click(screen.getByText('rules.editSave'));
+		fireEvent.click(screen.getByText('reference.editSave'));
 
 		await waitFor(() => expect(editRoleOrTechniqueMock).toHaveBeenCalledWith('rm', 'folded through', null, 0));
 	});
@@ -677,7 +678,7 @@ describe('RulesPage', () => {
 		render(<RulesPage />);
 
 		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerIngredient' }));
-		fireEvent.click(await screen.findByText('rules.editRevert'));
+		fireEvent.click(await screen.findByText('reference.editRevert'));
 
 		await waitFor(() => expect(revertTriggerIngredientMock).toHaveBeenCalledWith('tb', 2));
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
@@ -720,8 +721,8 @@ describe('RulesPage', () => {
 		render(<RulesPage />);
 
 		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerIngredient' }));
-		fireEvent.change(await screen.findByLabelText('rules.editName'), { target: { value: 'Bovine' } });
-		fireEvent.click(screen.getByText('rules.editSave'));
+		fireEvent.change(await screen.findByLabelText('reference.editName'), { target: { value: 'Bovine' } });
+		fireEvent.click(screen.getByText('reference.editSave'));
 
 		expect(await screen.findByText('rules.staleReload')).not.toBeNull();
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
@@ -767,9 +768,9 @@ describe('RulesPage', () => {
 		render(<RulesPage />);
 
 		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerTranslations' }));
-		const greekName = (await screen.findByLabelText('EL rules.editName')) as HTMLInputElement;
+		const greekName = (await screen.findByLabelText('EL reference.editName')) as HTMLInputElement;
 		fireEvent.change(greekName, { target: { value: 'Βόειο' } });
-		fireEvent.click(screen.getAllByText('rules.translationSave')[0]);
+		fireEvent.click(screen.getAllByText('reference.translationSave')[0]);
 
 		await waitFor(() =>
 			expect(stageTriggerIngredientTranslationMock).toHaveBeenCalledWith('tb', 'EL', 'Βόειο', null, 0),
@@ -789,16 +790,16 @@ describe('RulesPage', () => {
 		render(<RulesPage />);
 
 		fireEvent.click(await screen.findByRole('button', { name: 'rules.editTriggerTranslations' }));
-		const greekName = (await screen.findByLabelText('EL rules.editName')) as HTMLInputElement;
+		const greekName = (await screen.findByLabelText('EL reference.editName')) as HTMLInputElement;
 		fireEvent.change(greekName, { target: { value: 'Βόειο' } });
-		fireEvent.change(screen.getByLabelText('LT rules.editName'), { target: { value: 'Jautiena' } });
-		fireEvent.click(screen.getAllByText('rules.translationSave')[0]);
+		fireEvent.change(screen.getByLabelText('LT reference.editName'), { target: { value: 'Jautiena' } });
+		fireEvent.click(screen.getAllByText('reference.translationSave')[0]);
 
 		await waitFor(() =>
 			expect(stageTriggerIngredientTranslationMock).toHaveBeenCalledWith('tb', 'EL', 'Βόειο', null, 0),
 		);
 		await waitFor(() =>
-			expect((screen.getByLabelText('LT rules.editName') as HTMLInputElement).value).toBe('Jautiena'),
+			expect((screen.getByLabelText('LT reference.editName') as HTMLInputElement).value).toBe('Jautiena'),
 		);
 		expect(fetchTriggerIngredientTranslationsMock).toHaveBeenCalledTimes(2);
 	});
@@ -815,7 +816,7 @@ describe('RulesPage', () => {
 		render(<RulesPage />);
 
 		fireEvent.click(await screen.findByRole('button', { name: 'rules.editRoleTranslations' }));
-		fireEvent.click(await screen.findByText('rules.translationRevert'));
+		fireEvent.click(await screen.findByText('reference.translationRevert'));
 
 		await waitFor(() => expect(revertRoleOrTechniqueTranslationMock).toHaveBeenCalledWith('rm', 'EL', 4));
 		await waitFor(() => expect(fetchRulesMock).toHaveBeenCalledTimes(2));
@@ -1406,12 +1407,12 @@ describe('RulesPage', () => {
 			await screen.findByRole('button', { name: 'rules.editAlternativeIngredient Brown lentils (cooked)' }),
 		);
 
-		const nameInput = (await screen.findByLabelText('rules.editName')) as HTMLInputElement;
+		const nameInput = (await screen.findByLabelText('reference.editName')) as HTMLInputElement;
 		expect(fetchAlternativeIngredientMock).toHaveBeenCalledWith('s1-alt');
 		await waitFor(() => expect(nameInput.value).toBe('Smoked tofu cubes'));
 		expect(screen.getByText('rules.editBlastRadius')).toBeTruthy();
 		fireEvent.change(nameInput, { target: { value: 'Smoked tofu' } });
-		fireEvent.click(screen.getByText('rules.editSave'));
+		fireEvent.click(screen.getByText('reference.editSave'));
 
 		await waitFor(() =>
 			expect(editAlternativeIngredientMock).toHaveBeenCalledWith(
@@ -1433,7 +1434,7 @@ describe('RulesPage', () => {
 		fireEvent.click(
 			await screen.findByRole('button', { name: 'rules.editAlternativeIngredient Brown lentils (cooked)' }),
 		);
-		fireEvent.click(await screen.findByText('rules.editRevert'));
+		fireEvent.click(await screen.findByText('reference.editRevert'));
 
 		await waitFor(() => expect(revertAlternativeIngredientMock).toHaveBeenCalledWith('s1-alt', 2));
 	});
@@ -1449,10 +1450,10 @@ describe('RulesPage', () => {
 			await screen.findByRole('button', { name: 'rules.editAlternativeTranslations Brown lentils (cooked)' }),
 		);
 
-		const elName = (await screen.findByLabelText('EL rules.editName')) as HTMLInputElement;
+		const elName = (await screen.findByLabelText('EL reference.editName')) as HTMLInputElement;
 		expect(fetchAlternativeIngredientTranslationsMock).toHaveBeenCalledWith('s1-alt');
 		fireEvent.change(elName, { target: { value: 'Καπνιστό τόφου' } });
-		fireEvent.click(screen.getAllByText('rules.translationSave')[0]);
+		fireEvent.click(screen.getAllByText('reference.translationSave')[0]);
 
 		await waitFor(() =>
 			expect(stageAlternativeIngredientTranslationMock).toHaveBeenCalledWith(

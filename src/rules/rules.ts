@@ -1,4 +1,11 @@
 import { apiFetch } from '@/api/client';
+import {
+	type Language,
+	type ReferenceDetails,
+	type ReferenceOption,
+	type TranslationState,
+	type VersionedText,
+} from '@/components/referenceData';
 
 export type RuleChangeState = 'UNCHANGED' | 'CHANGED' | 'NEW';
 
@@ -8,45 +15,6 @@ export type RuleField = 'RATIONALE' | 'ACTIVE' | 'TRIGGER_INGREDIENT' | 'ROLE_OR
 
 /** One of a Suggestion Template's editable English text fields. */
 export type TemplateField = 'RESTRICTION' | 'EQUIVALENCE' | 'TECHNIQUE_NOTES';
-
-/** A non-English language a Rule's rationale and shared entities can be translated into. English is the master/fallback. */
-export type Language = 'EL' | 'LT' | 'NL';
-
-/** The non-English languages, in display order. */
-export const LANGUAGES: Language[] = ['EL', 'LT', 'NL'];
-
-/** Whether a translatable thing is translated in a given language, missing (falls back to English), or has a pending change. */
-export type TranslationState = 'MISSING' | 'PRESENT' | 'STAGED';
-
-/** An effective translated text and the Working Copy version a subsequent edit must be based on (0 when not staged). */
-export interface VersionedText {
-	text: string | null;
-	version: number;
-}
-
-/** A selectable reference-data entry (Recommendation, Trigger Ingredient or Role or Technique) for the new-Rule form. */
-export interface ReferenceOption {
-	id: string;
-	name: string;
-}
-
-/** The editable details of a shared reference entity (a Trigger Ingredient or Role or Technique). `name` is null only
- * for a not-yet-translated language in the per-language translation payload; the English details always carry a name. */
-export interface ReferenceDetails {
-	name: string | null;
-	explanationForLlm: string | null;
-	/** Working Copy version to base the next edit on (0 when no Staged Change exists yet). */
-	version: number;
-	/** Whether a published master baseline exists behind these details, so a Staged Change can be reverted to it. */
-	published: boolean;
-}
-
-/** The editable details of a shared AlternativeIngredient plus its blast radius — the number of Suggestion Templates,
- * across all Rules, that reference it and would see the edit. Structurally a {@link ReferenceDetails} so it can pre-fill
- * the shared {@link ReferenceDetails} edit dialog directly. */
-export interface AlternativeIngredientDetails extends ReferenceDetails {
-	referenceCount: number;
-}
 
 /** The reference data an editor chooses from when creating a new Rule. */
 export interface NewRuleOptions {
@@ -258,23 +226,6 @@ export function fetchNewRuleOptions(): Promise<NewRuleOptions> {
 	return apiFetch<NewRuleOptions>('/rules/new-rule-options');
 }
 
-/** Fetches the AlternativeIngredients an editor can add to a Rule (master overlaid by the Working Copy), as id and name, sorted by name. */
-export function fetchAlternativeIngredientOptions(): Promise<ReferenceOption[]> {
-	return apiFetch<ReferenceOption[]>('/rules/alternative-ingredients');
-}
-
-/**
- * Stages a brand-new AlternativeIngredient in the Working Copy with name alone, resolving with its id and name, so it
- * can be chosen for the template being added. Rejects with {@link ApiError} status 409 when one with the same name
- * already exists.
- */
-export function createAlternativeIngredient(name: string): Promise<ReferenceOption> {
-	return apiFetch<ReferenceOption>('/rules/alternative-ingredients', {
-		method: 'POST',
-		body: JSON.stringify({ name }),
-	});
-}
-
 /**
  * Adds a Suggestion Template to a Rule for an existing AlternativeIngredient, staged in the Working Copy. When the Rule
  * already has a template for the alternative no duplicate is created; the existing one is returned ({@code created}
@@ -441,72 +392,6 @@ export function stageRoleOrTechniqueTranslation(
  */
 export function revertRoleOrTechniqueTranslation(id: string, lang: Language, baseVersion: number): Promise<void> {
 	return apiFetch<void>(`/rules/roles-or-techniques/${id}/translations/${lang}?baseVersion=${baseVersion}`, {
-		method: 'DELETE',
-	});
-}
-
-/** Fetches the effective details of an AlternativeIngredient (master overlaid by any Staged Change) plus its blast
- * radius, to pre-fill and warn within its edit dialog. */
-export function fetchAlternativeIngredient(id: string): Promise<AlternativeIngredientDetails> {
-	return apiFetch<AlternativeIngredientDetails>(`/rules/alternative-ingredients/${id}`);
-}
-
-/**
- * Stages an edit to a shared AlternativeIngredient's name and explanation in the Working Copy; the change is seen by
- * every referencing Suggestion Template. Rejects with {@link ApiError} status 409 when the base version is stale or the
- * name is taken.
- */
-export function editAlternativeIngredient(
-	id: string,
-	name: string,
-	explanationForLlm: string | null,
-	baseVersion: number,
-): Promise<void> {
-	return apiFetch<void>(`/rules/alternative-ingredients/${id}`, {
-		method: 'PUT',
-		body: JSON.stringify({ name, explanationForLlm, baseVersion }),
-	});
-}
-
-/**
- * Reverts a shared AlternativeIngredient's staged edit, restoring its published master name and explanation; the change
- * is seen by every referencing Suggestion Template. Rejects with {@link ApiError} status 409 when the base version is stale.
- */
-export function revertAlternativeIngredient(id: string, baseVersion: number): Promise<void> {
-	return apiFetch<void>(`/rules/alternative-ingredients/${id}?baseVersion=${baseVersion}`, { method: 'DELETE' });
-}
-
-/**
- * Fetches the effective translation of a shared AlternativeIngredient for each non-English language (master overlaid by
- * any Staged Change) and the Working Copy version to base an edit on, to pre-fill the translations dialog.
- */
-export function fetchAlternativeIngredientTranslations(id: string): Promise<Record<Language, ReferenceDetails>> {
-	return apiFetch<Record<Language, ReferenceDetails>>(`/rules/alternative-ingredients/${id}/translations`);
-}
-
-/**
- * Stages an AlternativeIngredient's name and explanation translation for one language in the Working Copy. A {@code null}
- * value clears that field (falls back to English). Rejects with {@link ApiError} status 409 when the base version is stale.
- */
-export function stageAlternativeIngredientTranslation(
-	id: string,
-	lang: Language,
-	name: string | null,
-	explanationForLlm: string | null,
-	baseVersion: number,
-): Promise<void> {
-	return apiFetch<void>(`/rules/alternative-ingredients/${id}/translations/${lang}`, {
-		method: 'PUT',
-		body: JSON.stringify({ name, explanationForLlm, baseVersion }),
-	});
-}
-
-/**
- * Reverts an AlternativeIngredient's staged translation for one language, restoring the published master translation.
- * Rejects with {@link ApiError} status 409 when the base version is stale.
- */
-export function revertAlternativeIngredientTranslation(id: string, lang: Language, baseVersion: number): Promise<void> {
-	return apiFetch<void>(`/rules/alternative-ingredients/${id}/translations/${lang}?baseVersion=${baseVersion}`, {
 		method: 'DELETE',
 	});
 }

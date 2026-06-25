@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Language, VersionedText } from '@/rules/rules';
+import type { Language, VersionedText } from '@/components/referenceData';
 import { RationaleTranslationsDialog } from './RationaleTranslationsDialog';
 
 vi.mock('react-i18next', () => ({

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type ReferenceDetails } from '@/rules/rules';
+import { type ReferenceDetails } from '@/components/referenceData';
 
 interface ReferenceEditDialogProps {
 	referenceId: string;
 	title: string;
-	/** How many Rules reference this shared entity, shown as the blast radius of the edit. */
-	affectedCount: number;
+	/** A pre-formatted warning describing the blast radius of the edit (how many things the shared entity affects), or
+	 * null to omit it. The caller phrases it for its domain (Rules, Suggestion Templates, …). */
+	blastRadius: string | null;
 	/** Lowercased names of the OTHER reference entities of the same kind, for the uniqueness check. */
 	takenNames: string[];
 	loadDetails: (id: string) => Promise<ReferenceDetails>;
@@ -16,15 +17,15 @@ interface ReferenceEditDialogProps {
 }
 
 /**
- * Edits a shared reference entity (a Trigger Ingredient or a Role or Technique): its English name and LLM explanation.
- * The entity is shared master data, so the dialog warns how many Rules the edit affects and blocks an English name that
- * collides with another entry. A staged edit on a published entity can be reverted to its published value; translations
- * are edited separately from the grid's per-language chips.
+ * Edits a shared reference entity (a Trigger Ingredient, Role or Technique, or Alternative Ingredient): its English
+ * name and LLM explanation. The entity is shared master data, so the dialog warns about the blast radius of the edit
+ * and blocks an English name that collides with another entry. A staged edit on a published entity can be reverted to
+ * its published value; translations are edited separately from the grid's per-language chips.
  */
 export function ReferenceEditDialog({
 	referenceId,
 	title,
-	affectedCount,
+	blastRadius,
 	takenNames,
 	loadDetails,
 	onSubmit,
@@ -75,32 +76,32 @@ export function ReferenceEditDialog({
 			<div className="modal-box">
 				<h3 className="text-lg font-semibold">{title}</h3>
 				{loadFailed ? (
-					<p className="text-error mt-2">{t('rules.editLoadError')}</p>
+					<p className="text-error mt-2">{t('reference.editLoadError')}</p>
 				) : (
 					<div>
-						<p className="text-warning mt-2 text-sm">
-							{t('rules.editBlastRadius', { count: affectedCount })}
-						</p>
+						{blastRadius !== null ? <p className="text-warning mt-2 text-sm">{blastRadius}</p> : null}
 						<label className="form-control mt-3 block">
-							<span className="label-text">{t('rules.editName')}</span>
+							<span className="label-text">{t('reference.editName')}</span>
 							<input
 								type="text"
 								className="input input-sm input-bordered w-full"
-								aria-label={t('rules.editName')}
+								aria-label={t('reference.editName')}
 								value={name}
 								onChange={(event) => setName(event.target.value)}
 							/>
 						</label>
 						<label className="form-control mt-3 block">
-							<span className="label-text">{t('rules.editExplanation')}</span>
+							<span className="label-text">{t('reference.editExplanation')}</span>
 							<textarea
 								className="textarea textarea-bordered w-full"
-								aria-label={t('rules.editExplanation')}
+								aria-label={t('reference.editExplanation')}
 								value={explanation}
 								onChange={(event) => setExplanation(event.target.value)}
 							/>
 						</label>
-						{isDuplicate ? <p className="text-error mt-2 text-sm">{t('rules.editDuplicateName')}</p> : null}
+						{isDuplicate ? (
+							<p className="text-error mt-2 text-sm">{t('reference.editDuplicateName')}</p>
+						) : null}
 					</div>
 				)}
 				<div className="modal-action">
@@ -110,15 +111,15 @@ export function ReferenceEditDialog({
 							className="btn btn-ghost btn-sm"
 							onClick={() => onRevert(details.version)}
 						>
-							{t('rules.editRevert')}
+							{t('reference.editRevert')}
 						</button>
 					) : null}
 					<button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
-						{t('rules.editCancel')}
+						{t('reference.editCancel')}
 					</button>
 					{loadFailed ? null : (
 						<button type="button" className="btn btn-primary btn-sm" disabled={!canSave} onClick={submit}>
-							{t('rules.editSave')}
+							{t('reference.editSave')}
 						</button>
 					)}
 				</div>

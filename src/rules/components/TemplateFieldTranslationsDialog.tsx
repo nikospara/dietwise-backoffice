@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type Language, LANGUAGES, type TemplateField, type VersionedText } from '@/rules/rules';
+import { type Language, LANGUAGES, type VersionedText } from '@/components/referenceData';
+import { type TemplateField } from '@/rules/rules';
 
 interface TemplateFieldTranslationsDialogProps {
 	templateId: string;

@@ -2,19 +2,26 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '@/api/client';
 import {
-	addSuggestionTemplate,
+	type AlternativeIngredientDetails,
 	createAlternativeIngredient,
+	editAlternativeIngredient,
+	fetchAlternativeIngredient,
+	fetchAlternativeIngredientOptions,
+	fetchAlternativeIngredientTranslations,
+	revertAlternativeIngredient,
+	revertAlternativeIngredientTranslation,
+	stageAlternativeIngredientTranslation,
+} from '@/alternativeIngredients/alternativeIngredients';
+import { type Language, LANGUAGES, type ReferenceOption } from '@/components/referenceData';
+import {
+	addSuggestionTemplate,
 	createRoleOrTechnique,
 	createRule,
 	createTriggerIngredient,
 	discardNewRule,
 	discardSuggestionTemplate,
-	editAlternativeIngredient,
 	editRoleOrTechnique,
 	editTriggerIngredient,
-	fetchAlternativeIngredient,
-	fetchAlternativeIngredientOptions,
-	fetchAlternativeIngredientTranslations,
 	fetchNewRuleOptions,
 	fetchRationaleTranslations,
 	fetchRoleOrTechnique,
@@ -24,10 +31,6 @@ import {
 	fetchTemplateFieldTranslations,
 	fetchTriggerIngredient,
 	fetchTriggerIngredientTranslations,
-	type Language,
-	LANGUAGES,
-	revertAlternativeIngredient,
-	revertAlternativeIngredientTranslation,
 	revertRationale,
 	revertRationaleTranslation,
 	revertRoleOrTechnique,
@@ -38,16 +41,13 @@ import {
 	revertTriggerIngredientTranslation,
 	setActive,
 	setActiveSuggestionTemplate,
-	stageAlternativeIngredientTranslation,
 	stageRationale,
 	stageRationaleTranslation,
 	stageRoleOrTechniqueTranslation,
 	stageSuggestionTemplateField,
 	stageTemplateFieldTranslation,
 	stageTriggerIngredientTranslation,
-	type AlternativeIngredientDetails,
 	type NewRuleOptions,
-	type ReferenceOption,
 	type Rule,
 	type SuggestionTemplate,
 	type TemplateField,
@@ -55,8 +55,8 @@ import {
 import { Combobox } from '@/components/Combobox';
 import { TranslationChips } from '@/components/TranslationChips';
 import { RationaleTranslationsDialog } from '@/rules/components/RationaleTranslationsDialog';
-import { ReferenceEditDialog } from '@/rules/components/ReferenceEditDialog';
-import { ReferenceTranslationsDialog } from '@/rules/components/ReferenceTranslationsDialog';
+import { ReferenceEditDialog } from '@/components/ReferenceEditDialog';
+import { ReferenceTranslationsDialog } from '@/components/ReferenceTranslationsDialog';
 import { TemplateFieldTranslationsDialog } from '@/rules/components/TemplateFieldTranslationsDialog';
 
 type EditTarget = { kind: 'trigger' | 'role'; id: string };
@@ -736,7 +736,7 @@ export function RulesPage() {
 			<ReferenceEditDialog
 				referenceId={target.id}
 				title={t(target.kind === 'trigger' ? 'rules.editTriggerIngredient' : 'rules.editRoleOrTechnique')}
-				affectedCount={affectedCount}
+				blastRadius={t('rules.editBlastRadius', { count: affectedCount })}
 				takenNames={candidates
 					.filter((option) => option.id !== target.id)
 					.map((option) => option.name.toLowerCase())}
@@ -777,7 +777,7 @@ export function RulesPage() {
 			<ReferenceEditDialog
 				referenceId={target.id}
 				title={t('rules.editAlternativeIngredient')}
-				affectedCount={target.details.referenceCount}
+				blastRadius={t('rules.editBlastRadius', { count: target.details.referenceCount })}
 				takenNames={(alternativeOptions ?? [])
 					.filter((option) => option.id !== target.id)
 					.map((option) => option.name.toLowerCase())}

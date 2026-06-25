@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Language, ReferenceDetails } from '@/rules/rules';
+import type { Language, ReferenceDetails } from '@/components/referenceData';
 import { ReferenceTranslationsDialog } from './ReferenceTranslationsDialog';
 
 vi.mock('react-i18next', () => ({
@@ -36,36 +36,38 @@ describe('ReferenceTranslationsDialog', () => {
 	it('pre-fills each language name and explanation and shows the English source', async () => {
 		renderDialog();
 
-		expect(((await screen.findByLabelText('EL rules.editName')) as HTMLInputElement).value).toBe('Βόειο');
-		expect((screen.getByLabelText('EL rules.editExplanation') as HTMLTextAreaElement).value).toBe('Κόκκινο κρέας.');
-		expect((screen.getByLabelText('NL rules.editName') as HTMLInputElement).value).toBe('Rundvlees');
-		expect((screen.getByLabelText('LT rules.editName') as HTMLInputElement).value).toBe('');
+		expect(((await screen.findByLabelText('EL reference.editName')) as HTMLInputElement).value).toBe('Βόειο');
+		expect((screen.getByLabelText('EL reference.editExplanation') as HTMLTextAreaElement).value).toBe(
+			'Κόκκινο κρέας.',
+		);
+		expect((screen.getByLabelText('NL reference.editName') as HTMLInputElement).value).toBe('Rundvlees');
+		expect((screen.getByLabelText('LT reference.editName') as HTMLInputElement).value).toBe('');
 		expect(screen.getByText('Beef', { exact: false })).not.toBeNull();
 	});
 
 	it('shows the English name as placeholder and the field name for the explanation', async () => {
 		renderDialog();
 
-		expect(((await screen.findByLabelText('LT rules.editName')) as HTMLInputElement).placeholder).toBe('Beef');
-		expect((screen.getByLabelText('LT rules.editExplanation') as HTMLTextAreaElement).placeholder).toBe(
-			'rules.editExplanation',
+		expect(((await screen.findByLabelText('LT reference.editName')) as HTMLInputElement).placeholder).toBe('Beef');
+		expect((screen.getByLabelText('LT reference.editExplanation') as HTMLTextAreaElement).placeholder).toBe(
+			'reference.editExplanation',
 		);
 	});
 
 	it('falls back to the field name as placeholder when there is no English name', async () => {
 		renderDialog({ englishName: '' });
 
-		expect(((await screen.findByLabelText('LT rules.editName')) as HTMLInputElement).placeholder).toBe(
-			'rules.editName',
+		expect(((await screen.findByLabelText('LT reference.editName')) as HTMLInputElement).placeholder).toBe(
+			'reference.editName',
 		);
 	});
 
 	it('offers revert only for a staged language and reverts it against its version', async () => {
 		const { onRevert } = renderDialog();
 
-		await screen.findByLabelText('EL rules.editName');
-		expect(screen.getAllByText('rules.translationRevert')).toHaveLength(1);
-		fireEvent.click(screen.getByText('rules.translationRevert'));
+		await screen.findByLabelText('EL reference.editName');
+		expect(screen.getAllByText('reference.translationRevert')).toHaveLength(1);
+		fireEvent.click(screen.getByText('reference.translationRevert'));
 
 		expect(onRevert).toHaveBeenCalledWith('EL', 2);
 	});
@@ -73,11 +75,11 @@ describe('ReferenceTranslationsDialog', () => {
 	it('disables save until a language is edited, then stages its name and explanation against its version', async () => {
 		const { onStage } = renderDialog();
 
-		const greekName = (await screen.findByLabelText('EL rules.editName')) as HTMLInputElement;
-		expect((screen.getAllByText('rules.translationSave')[0] as HTMLButtonElement).disabled).toBe(true);
+		const greekName = (await screen.findByLabelText('EL reference.editName')) as HTMLInputElement;
+		expect((screen.getAllByText('reference.translationSave')[0] as HTMLButtonElement).disabled).toBe(true);
 		fireEvent.change(greekName, { target: { value: 'Μοσχάρι' } });
-		expect((screen.getAllByText('rules.translationSave')[0] as HTMLButtonElement).disabled).toBe(false);
-		fireEvent.click(screen.getAllByText('rules.translationSave')[0]);
+		expect((screen.getAllByText('reference.translationSave')[0] as HTMLButtonElement).disabled).toBe(false);
+		fireEvent.click(screen.getAllByText('reference.translationSave')[0]);
 
 		expect(onStage).toHaveBeenCalledWith('EL', 'Μοσχάρι', 'Κόκκινο κρέας.', 2);
 	});
@@ -93,35 +95,35 @@ describe('ReferenceTranslationsDialog', () => {
 		const onStage = vi.fn().mockResolvedValue(undefined);
 		renderDialog({ loadTranslations, onStage });
 
-		const greekName = (await screen.findByLabelText('EL rules.editName')) as HTMLInputElement;
+		const greekName = (await screen.findByLabelText('EL reference.editName')) as HTMLInputElement;
 		fireEvent.change(greekName, { target: { value: 'Μοσχάρι' } });
-		fireEvent.change(screen.getByLabelText('LT rules.editName'), { target: { value: 'Jautiena' } });
-		fireEvent.click(screen.getAllByText('rules.translationSave')[0]);
+		fireEvent.change(screen.getByLabelText('LT reference.editName'), { target: { value: 'Jautiena' } });
+		fireEvent.click(screen.getAllByText('reference.translationSave')[0]);
 
 		expect(onStage).toHaveBeenCalledWith('EL', 'Μοσχάρι', 'Κόκκινο κρέας.', 2);
 		// After the reconcile, the saved language matches its refreshed value, so its save button disables again.
 		await waitFor(() =>
-			expect((screen.getAllByText('rules.translationSave')[0] as HTMLButtonElement).disabled).toBe(true),
+			expect((screen.getAllByText('reference.translationSave')[0] as HTMLButtonElement).disabled).toBe(true),
 		);
 		// The unsaved Lithuanian edit survives because the dialog stayed open.
-		expect((screen.getByLabelText('LT rules.editName') as HTMLInputElement).value).toBe('Jautiena');
+		expect((screen.getByLabelText('LT reference.editName') as HTMLInputElement).value).toBe('Jautiena');
 
 		// Editing and saving the same language again stages against the refreshed version, not the stale one.
-		fireEvent.change(screen.getByLabelText('EL rules.editName'), { target: { value: 'Μοσχαράκι' } });
-		fireEvent.click(screen.getAllByText('rules.translationSave')[0]);
+		fireEvent.change(screen.getByLabelText('EL reference.editName'), { target: { value: 'Μοσχαράκι' } });
+		fireEvent.click(screen.getAllByText('reference.translationSave')[0]);
 		expect(onStage).toHaveBeenLastCalledWith('EL', 'Μοσχαράκι', 'Κόκκινο κρέας.', 5);
 		await waitFor(() =>
-			expect((screen.getAllByText('rules.translationSave')[0] as HTMLButtonElement).disabled).toBe(true),
+			expect((screen.getAllByText('reference.translationSave')[0] as HTMLButtonElement).disabled).toBe(true),
 		);
 	});
 
 	it('stages a null name and explanation when a language is cleared', async () => {
 		const { onStage } = renderDialog();
 
-		const greekName = (await screen.findByLabelText('EL rules.editName')) as HTMLInputElement;
+		const greekName = (await screen.findByLabelText('EL reference.editName')) as HTMLInputElement;
 		fireEvent.change(greekName, { target: { value: '   ' } });
-		fireEvent.change(screen.getByLabelText('EL rules.editExplanation'), { target: { value: '' } });
-		fireEvent.click(screen.getAllByText('rules.translationSave')[0]);
+		fireEvent.change(screen.getByLabelText('EL reference.editExplanation'), { target: { value: '' } });
+		fireEvent.click(screen.getAllByText('reference.translationSave')[0]);
 
 		expect(onStage).toHaveBeenCalledWith('EL', null, null, 2);
 	});
@@ -129,8 +131,8 @@ describe('ReferenceTranslationsDialog', () => {
 	it('calls onCancel when closed', async () => {
 		const { onCancel } = renderDialog();
 
-		await screen.findByLabelText('EL rules.editName');
-		fireEvent.click(screen.getByText('rules.translationsClose'));
+		await screen.findByLabelText('EL reference.editName');
+		fireEvent.click(screen.getByText('reference.translationsClose'));
 
 		expect(onCancel).toHaveBeenCalled();
 	});
@@ -138,7 +140,7 @@ describe('ReferenceTranslationsDialog', () => {
 	it('shows an error and no language inputs when the translations cannot be loaded', async () => {
 		renderDialog({ loadTranslations: vi.fn().mockRejectedValue(new Error('boom')) });
 
-		expect(await screen.findByText('rules.translationsLoadError')).not.toBeNull();
-		expect(screen.queryByLabelText('EL rules.editName')).toBeNull();
+		expect(await screen.findByText('reference.translationsLoadError')).not.toBeNull();
+		expect(screen.queryByLabelText('EL reference.editName')).toBeNull();
 	});
 });

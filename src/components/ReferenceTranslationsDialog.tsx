@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type Language, LANGUAGES, type ReferenceDetails } from '@/rules/rules';
+import { type Language, LANGUAGES, type ReferenceDetails } from '@/components/referenceData';
 
 interface ReferenceTranslationsDialogProps {
 	referenceId: string;
@@ -31,9 +31,10 @@ function draftOf(details: ReferenceDetails): TranslationDraft {
 }
 
 /**
- * Edits a shared reference entity's (a Trigger Ingredient or Role or Technique) name and LLM explanation in each
- * non-English language. Each language is staged or reverted independently against its own Working Copy version; a
- * missing translation falls back to English at assessment time. Pre-filled from the effective per-language translations.
+ * Edits a shared reference entity's (a Trigger Ingredient, Role or Technique, or Alternative Ingredient) name and LLM
+ * explanation in each non-English language. Each language is staged or reverted independently against its own Working
+ * Copy version; a missing translation falls back to English at assessment time. Pre-filled from the effective
+ * per-language translations.
  */
 export function ReferenceTranslationsDialog({
 	referenceId,
@@ -86,10 +87,10 @@ export function ReferenceTranslationsDialog({
 			<div className="modal-box">
 				<h3 className="text-lg font-semibold">{title}</h3>
 				<p className="text-base-content/70 mt-2 text-sm">
-					<span className="font-semibold">{t('rules.translationsEnglish')}:</span> {englishName}
+					<span className="font-semibold">{t('reference.translationsEnglish')}:</span> {englishName}
 				</p>
 				{loadFailed ? (
-					<p className="text-error mt-2">{t('rules.translationsLoadError')}</p>
+					<p className="text-error mt-2">{t('reference.translationsLoadError')}</p>
 				) : (
 					LANGUAGES.map((lang) => {
 						const current = translations?.[lang];
@@ -109,15 +110,15 @@ export function ReferenceTranslationsDialog({
 											className="btn btn-ghost btn-xs"
 											onClick={() => reconcile(lang, () => onRevert(lang, current.version))}
 										>
-											{t('rules.translationRevert')}
+											{t('reference.translationRevert')}
 										</button>
 									) : null}
 								</div>
 								<input
 									type="text"
 									className="input input-sm input-bordered w-full"
-									aria-label={`${lang} ${t('rules.editName')}`}
-									placeholder={englishName || t('rules.editName')}
+									aria-label={`${lang} ${t('reference.editName')}`}
+									placeholder={englishName || t('reference.editName')}
 									value={draft.name}
 									disabled={current === undefined}
 									onChange={(event) =>
@@ -129,8 +130,8 @@ export function ReferenceTranslationsDialog({
 								/>
 								<textarea
 									className="textarea textarea-bordered mt-1 w-full"
-									aria-label={`${lang} ${t('rules.editExplanation')}`}
-									placeholder={t('rules.editExplanation')}
+									aria-label={`${lang} ${t('reference.editExplanation')}`}
+									placeholder={t('reference.editExplanation')}
 									value={draft.explanation}
 									disabled={current === undefined}
 									onChange={(event) =>
@@ -156,7 +157,7 @@ export function ReferenceTranslationsDialog({
 											)
 										}
 									>
-										{t('rules.translationSave')}
+										{t('reference.translationSave')}
 									</button>
 								</div>
 							</div>
@@ -165,7 +166,7 @@ export function ReferenceTranslationsDialog({
 				)}
 				<div className="modal-action">
 					<button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
-						{t('rules.translationsClose')}
+						{t('reference.translationsClose')}
 					</button>
 				</div>
 			</div>
