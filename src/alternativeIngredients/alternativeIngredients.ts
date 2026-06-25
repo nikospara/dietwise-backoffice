@@ -1,5 +1,10 @@
 import { apiFetch } from '@/api/client';
-import { type Language, type ReferenceDetails, type ReferenceOption } from '@/components/referenceData';
+import {
+	type Language,
+	type ReferenceDetails,
+	type ReferenceOption,
+	type TranslationState,
+} from '@/components/referenceData';
 
 /** The editable details of a shared AlternativeIngredient plus its blast radius — the number of Suggestion Templates,
  * across all Rules, that reference it and would see the edit. Structurally a {@link ReferenceDetails} so it can pre-fill
@@ -88,4 +93,59 @@ export function revertAlternativeIngredientTranslation(id: string, lang: Languag
 	return apiFetch<void>(`/rules/alternative-ingredients/${id}/translations/${lang}?baseVersion=${baseVersion}`, {
 		method: 'DELETE',
 	});
+}
+
+/** One column of the substitution-value grid: an ENCOURAGED Recommendation an AlternativeIngredient can provide,
+ * labelled in the header by its component for scoring. */
+export interface RecommendationColumn {
+	id: string;
+	componentForScoring: string;
+}
+
+/** One AlternativeIngredient row of the substitution-value grid: its effective name, whether a published master row
+ * exists (false = Working-Copy-only, so it may be discarded), the Working Copy version a subsequent name/explanation
+ * edit must be based on, its per-language translation completeness, and its links to the grid columns. */
+export interface AlternativeIngredientRow {
+	id: string;
+	name: string;
+	published: boolean;
+	version: number;
+	translations: Record<Language, TranslationState>;
+	/** Recommendation ids this ingredient is linked to in published master (restricted to the grid columns). */
+	linkedRecommendationIds: string[];
+	/** Recommendation ids whose link carries a pending change in the Working Copy; a column's effective presence is the
+	 * master link toggled by a staged change (staged-but-not-master = staged addition, staged-and-master = staged removal). */
+	stagedRecommendationIds: string[];
+}
+
+/** The whole substitution-value grid: the ENCOURAGED Recommendation columns and one row per AlternativeIngredient. */
+export interface RecommendationGrid {
+	columns: RecommendationColumn[];
+	ingredients: AlternativeIngredientRow[];
+}
+
+/** Fetches the substitution-value grid (master overlaid by the Working Copy): the ENCOURAGED Recommendation columns and
+ * the AlternativeIngredient rows with their links to those columns. */
+export function fetchRecommendationGrid(): Promise<RecommendationGrid> {
+	return apiFetch<RecommendationGrid>('/alternative-ingredients/recommendations');
+}
+
+/**
+ * Stages a single AlternativeIngredient-to-Recommendation link to an absolute target presence in the Working Copy,
+ * leaving published master untouched. An unversioned toggle: staging the presence master already has collapses the
+ * Staged Change, and there is no stale-version check.
+ */
+export function toggleRecommendation(id: string, recommendationId: string, present: boolean): Promise<void> {
+	return apiFetch<void>(`/alternative-ingredients/${id}/recommendations/${recommendationId}`, {
+		method: 'PUT',
+		body: JSON.stringify({ present }),
+	});
+}
+
+/**
+ * Discards a Working-Copy-only AlternativeIngredient, removing its Working Copy row, staged translations and staged
+ * links. Rejects with {@link ApiError} status 409 when it is published or still referenced by a Suggestion Template.
+ */
+export function discardAlternativeIngredient(id: string): Promise<void> {
+	return apiFetch<void>(`/alternative-ingredients/${id}`, { method: 'DELETE' });
 }

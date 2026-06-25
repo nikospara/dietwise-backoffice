@@ -5,7 +5,8 @@
 	"nav": {
 		"home": "Home",
 		"rules": "Rules",
-		"recommendations": "Recommendations"
+		"recommendations": "Recommendations",
+		"substitutionValue": "Substitution Value"
 	},
 	"auth": {
 		"signingIn": "Signing in…",
@@ -106,6 +107,28 @@
 		"translationSave": "Save",
 		"translationRevert": "Revert",
 		"translationsClose": "Close"
+	},
+	"substitutionValue": {
+		"title": "Substitution Value",
+		"loading": "Loading substitution values…",
+		"loadError": "Could not load the substitution values. Please try again.",
+		"columnName": "Alternative Ingredient",
+		"columnTranslations": "Translations",
+		"columnActions": "Actions",
+		"toggleCell": "Toggle",
+		"newBadge": "New",
+		"pendingBadge": "Pending",
+		"editAlternativeIngredient": "Edit Alternative Ingredient",
+		"editAlternativeTranslations": "Edit Alternative Ingredient translations",
+		"editTranslations": "Edit translations of",
+		"editBlastRadius": "Shared master data — this edit affects {{count}} suggestion template(s).",
+		"discardIngredient": "Discard alternative ingredient",
+		"discardBlocked": "This alternative ingredient is published or still referenced by a suggestion template, so it cannot be deleted.",
+		"addLabel": "New alternative ingredient name",
+		"addPlaceholder": "New alternative ingredient…",
+		"add": "Add",
+		"duplicateName": "An alternative ingredient with this name already exists.",
+		"staleReload": "Someone changed this since you loaded it. The grid was refreshed — please redo your edit."
 	},
 	"home": {
 		"welcome": "Welcome, {{name}}",

@@ -6,6 +6,7 @@ import { HomePage } from '@/pages/HomePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { RecommendationsPage } from '@/recommendations/RecommendationsPage';
 import { RulesPage } from '@/rules/RulesPage';
+import { SubstitutionValuePage } from '@/alternativeIngredients/SubstitutionValuePage';
 
 export const router = createBrowserRouter(
 	[
@@ -31,6 +32,14 @@ export const router = createBrowserRouter(
 					element: (
 						<RequireBackofficeRole>
 							<RecommendationsPage />
+						</RequireBackofficeRole>
+					),
+				},
+				{
+					path: 'substitution-value',
+					element: (
+						<RequireBackofficeRole>
+							<SubstitutionValuePage />
 						</RequireBackofficeRole>
 					),
 				},
