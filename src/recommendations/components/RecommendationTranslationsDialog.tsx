@@ -4,28 +4,31 @@ import { type Language, LANGUAGES, type RecommendationTranslationDetails } from 
 
 interface RecommendationTranslationsDialogProps {
 	recommendationId: string;
-	/** The effective English name, component and explanation, shown read-only as the source the translations render. */
+	/** The effective English name, component, explanation and human friendly display, shown read-only as the source the
+	 * translations render. */
 	englishName: string;
 	englishComponent: string;
 	englishExplanation: string | null;
+	englishHumanFriendlyDisplay: string | null;
 	loadTranslations: (id: string) => Promise<Record<Language, RecommendationTranslationDetails>>;
 	onStage: (
 		lang: Language,
 		name: string | null,
 		componentForScoring: string | null,
 		explanationForLlm: string | null,
+		humanFriendlyDisplay: string | null,
 		baseVersion: number,
 	) => Promise<void>;
 	onRevert: (lang: Language, baseVersion: number) => Promise<void>;
 	onCancel: () => void;
 }
 
-type TranslationDraft = { name: string; component: string; explanation: string };
+type TranslationDraft = { name: string; component: string; explanation: string; humanFriendlyDisplay: string };
 
 const EMPTY_DRAFTS: Record<Language, TranslationDraft> = {
-	EL: { name: '', component: '', explanation: '' },
-	LT: { name: '', component: '', explanation: '' },
-	NL: { name: '', component: '', explanation: '' },
+	EL: { name: '', component: '', explanation: '', humanFriendlyDisplay: '' },
+	LT: { name: '', component: '', explanation: '', humanFriendlyDisplay: '' },
+	NL: { name: '', component: '', explanation: '', humanFriendlyDisplay: '' },
 };
 
 function draftOf(details: RecommendationTranslationDetails): TranslationDraft {
@@ -33,20 +36,22 @@ function draftOf(details: RecommendationTranslationDetails): TranslationDraft {
 		name: details.name ?? '',
 		component: details.componentForScoring ?? '',
 		explanation: details.explanationForLlm ?? '',
+		humanFriendlyDisplay: details.humanFriendlyDisplay ?? '',
 	};
 }
 
 /**
- * Edits a Recommendation's name, component for scoring and LLM explanation translation in each non-English language.
- * Each language is staged or reverted independently against its own Working Copy version; the three fields share that
- * version and are staged together. A missing translation falls back to English at assessment time. Pre-filled from the
- * effective per-language translations.
+ * Edits a Recommendation's name, component for scoring, LLM explanation and human friendly display translation in each
+ * non-English language. Each language is staged or reverted independently against its own Working Copy version; the four
+ * fields share that version and are staged together. A missing translation falls back to English at assessment time.
+ * Pre-filled from the effective per-language translations.
  */
 export function RecommendationTranslationsDialog({
 	recommendationId,
 	englishName,
 	englishComponent,
 	englishExplanation,
+	englishHumanFriendlyDisplay,
 	loadTranslations,
 	onStage,
 	onRevert,
@@ -105,6 +110,10 @@ export function RecommendationTranslationsDialog({
 						<span className="font-semibold">{t('recommendations.columnExplanation')}:</span>{' '}
 						{englishExplanation ?? '—'}
 					</p>
+					<p>
+						<span className="font-semibold">{t('recommendations.columnHumanFriendlyDisplay')}:</span>{' '}
+						{englishHumanFriendlyDisplay ?? '—'}
+					</p>
 				</div>
 				{loadFailed ? (
 					<p className="text-error mt-2">{t('recommendations.translationsLoadError')}</p>
@@ -117,7 +126,8 @@ export function RecommendationTranslationsDialog({
 							current !== undefined &&
 							(draft.name !== (current.name ?? '') ||
 								draft.component !== (current.componentForScoring ?? '') ||
-								draft.explanation !== (current.explanationForLlm ?? ''));
+								draft.explanation !== (current.explanationForLlm ?? '') ||
+								draft.humanFriendlyDisplay !== (current.humanFriendlyDisplay ?? ''));
 						return (
 							<div key={lang} className="mt-3">
 								<div className="flex items-center justify-between">
@@ -173,6 +183,21 @@ export function RecommendationTranslationsDialog({
 										}))
 									}
 								/>
+								<textarea
+									className="textarea textarea-bordered mt-1 w-full"
+									aria-label={`${lang} ${t('recommendations.columnHumanFriendlyDisplay')}`}
+									placeholder={
+										englishHumanFriendlyDisplay ?? t('recommendations.columnHumanFriendlyDisplay')
+									}
+									value={draft.humanFriendlyDisplay}
+									disabled={current === undefined}
+									onChange={(event) =>
+										setDrafts((prev) => ({
+											...prev,
+											[lang]: { ...prev[lang], humanFriendlyDisplay: event.target.value },
+										}))
+									}
+								/>
 								<div className="mt-1 text-right">
 									<button
 										type="button"
@@ -185,6 +210,9 @@ export function RecommendationTranslationsDialog({
 													draft.name.trim() === '' ? null : draft.name.trim(),
 													draft.component.trim() === '' ? null : draft.component.trim(),
 													draft.explanation.trim() === '' ? null : draft.explanation,
+													draft.humanFriendlyDisplay.trim() === ''
+														? null
+														: draft.humanFriendlyDisplay,
 													current?.version ?? 0,
 												),
 											)

@@ -9,9 +9,9 @@ import {
 	type RecommendationWeight,
 	fetchRecommendations,
 	fetchRecommendationTranslations,
-	revertExplanation,
+	revertMaster,
 	revertRecommendationTranslation,
-	stageExplanation,
+	stageMaster,
 	stageRecommendationTranslation,
 } from '@/recommendations/recommendations';
 import { TranslationChips } from '@/components/TranslationChips';
@@ -22,7 +22,12 @@ type TranslationTarget = {
 	englishName: string;
 	englishComponent: string;
 	englishExplanation: string | null;
+	englishHumanFriendlyDisplay: string | null;
 };
+
+type MasterField = 'explanation' | 'humanFriendlyDisplay';
+
+type MasterDraft = { explanation: string; humanFriendlyDisplay: string };
 
 function WeightIcon({ weight, label }: { weight: RecommendationWeight; label: string }) {
 	const encouraged = weight === 'ENCOURAGED';
@@ -40,7 +45,7 @@ function WeightIcon({ weight, label }: { weight: RecommendationWeight; label: st
 export function RecommendationsPage() {
 	const { t } = useTranslation();
 	const [recommendations, setRecommendations] = useState<Recommendation[] | null>(null);
-	const [drafts, setDrafts] = useState<Record<string, string>>({});
+	const [drafts, setDrafts] = useState<Record<string, MasterDraft>>({});
 	const [failed, setFailed] = useState(false);
 	const [conflict, setConflict] = useState(false);
 	const [translating, setTranslating] = useState<TranslationTarget | null>(null);
@@ -59,53 +64,8 @@ export function RecommendationsPage() {
 		reload();
 	}, [reload]);
 
-	const onDraftChange = (id: string, value: string) => {
-		setDrafts((current) => ({ ...current, [id]: value }));
-	};
-
-	const commitExplanation = async (recommendation: Recommendation) => {
-		const draft = drafts[recommendation.id];
-		if (draft === undefined || draft === (recommendation.explanationForLlm ?? '')) {
-			return;
-		}
-		try {
-			const version = await stageExplanation(recommendation.id, draft, recommendation.version);
-			setConflict(false);
-			setRecommendations(
-				(current) =>
-					current?.map((r) =>
-						r.id === recommendation.id
-							? { ...r, explanationForLlm: draft, version, explanationChanged: version > 0 }
-							: r,
-					) ?? null,
-			);
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 409) {
-				setConflict(true);
-				reload();
-			} else {
-				setFailed(true);
-			}
-		}
-	};
-
-	const commitRevert = async (recommendation: Recommendation) => {
-		try {
-			await revertExplanation(recommendation.id, recommendation.version);
-			setConflict(false);
-			reload();
-		} catch (error) {
-			if (error instanceof ApiError && error.status === 409) {
-				setConflict(true);
-				reload();
-			} else {
-				setFailed(true);
-			}
-		}
-	};
-
-	// Staging or reverting a translation refreshes the grid so its chips reflect the new state; a stale base version
-	// warns and refreshes too. The dialog stays open and reconciles its own per-language state.
+	// Runs a staging or reverting action, then refreshes the grid so highlights and chips reflect the new state; a stale
+	// base version (409) warns and refreshes too, never a silent retry. Any open dialog reconciles its own state.
 	const commit = async (action: () => Promise<unknown>) => {
 		try {
 			await action();
@@ -121,12 +81,44 @@ export function RecommendationsPage() {
 		}
 	};
 
+	const onDraftChange = (recommendation: Recommendation, field: MasterField, value: string) => {
+		setDrafts((current) => {
+			const existing = current[recommendation.id] ?? {
+				explanation: recommendation.explanationForLlm ?? '',
+				humanFriendlyDisplay: recommendation.humanFriendlyDisplay ?? '',
+			};
+			return { ...current, [recommendation.id]: { ...existing, [field]: value } };
+		});
+	};
+
+	// The explanation and human friendly display are one Working Copy row sharing a version, so committing either sends
+	// both values against that version; the field not being edited keeps its last-saved value.
+	const commitMasterField = (recommendation: Recommendation, field: MasterField, value: string) => {
+		const effective =
+			field === 'explanation' ? recommendation.explanationForLlm : recommendation.humanFriendlyDisplay;
+		if (value === (effective ?? '')) {
+			return;
+		}
+		return commit(() =>
+			stageMaster(
+				recommendation.id,
+				field === 'explanation' ? value : recommendation.explanationForLlm,
+				field === 'humanFriendlyDisplay' ? value : recommendation.humanFriendlyDisplay,
+				recommendation.version,
+			),
+		);
+	};
+
+	const commitRevertMaster = (recommendation: Recommendation) =>
+		commit(() => revertMaster(recommendation.id, recommendation.version));
+
 	const commitStageTranslation = (
 		recommendationId: string,
 		lang: Language,
 		name: string | null,
 		componentForScoring: string | null,
 		explanationForLlm: string | null,
+		humanFriendlyDisplay: string | null,
 		baseVersion: number,
 	) =>
 		commit(() =>
@@ -136,6 +128,7 @@ export function RecommendationsPage() {
 				name,
 				componentForScoring,
 				explanationForLlm,
+				humanFriendlyDisplay,
 				baseVersion,
 			),
 		);
@@ -164,7 +157,7 @@ export function RecommendationsPage() {
 				</div>
 			) : null}
 			<div className="min-h-0 flex-1 overflow-auto">
-				<table className="table-pin-rows table min-w-[720px]">
+				<table className="table-pin-rows table min-w-[880px]">
 					<thead>
 						<tr>
 							<th className="w-8 px-1 py-4 text-center">
@@ -173,6 +166,7 @@ export function RecommendationsPage() {
 							<th className="px-1 py-4">{t('recommendations.columnName')}</th>
 							<th className="px-1 py-4">{t('recommendations.columnComponent')}</th>
 							<th className="px-1 py-4">{t('recommendations.columnExplanation')}</th>
+							<th className="px-1 py-4">{t('recommendations.columnHumanFriendlyDisplay')}</th>
 							<th className="px-1 py-4">{t('recommendations.columnTranslations')}</th>
 						</tr>
 					</thead>
@@ -196,21 +190,52 @@ export function RecommendationsPage() {
 										<input
 											type="text"
 											className={`input input-sm input-bordered min-w-0 flex-1 ${recommendation.explanationChanged ? 'border-warning bg-warning/10' : ''}`}
-											value={drafts[recommendation.id] ?? recommendation.explanationForLlm ?? ''}
+											value={
+												drafts[recommendation.id]?.explanation ??
+												recommendation.explanationForLlm ??
+												''
+											}
 											aria-label={t('recommendations.explanationEditLabel')}
-											onChange={(event) => onDraftChange(recommendation.id, event.target.value)}
-											onBlur={() => commitExplanation(recommendation)}
+											onChange={(event) =>
+												onDraftChange(recommendation, 'explanation', event.target.value)
+											}
+											onBlur={(event) =>
+												commitMasterField(recommendation, 'explanation', event.target.value)
+											}
 										/>
-										{recommendation.explanationChanged ? (
+										{recommendation.explanationChanged ||
+										recommendation.humanFriendlyDisplayChanged ? (
 											<button
 												type="button"
 												className="btn btn-ghost btn-xs"
-												onClick={() => commitRevert(recommendation)}
+												onClick={() => commitRevertMaster(recommendation)}
 											>
 												{t('recommendations.revert')}
 											</button>
 										) : null}
 									</div>
+								</td>
+								<td className="px-1 py-1">
+									<input
+										type="text"
+										className={`input input-sm input-bordered w-full min-w-0 ${recommendation.humanFriendlyDisplayChanged ? 'border-warning bg-warning/10' : ''}`}
+										value={
+											drafts[recommendation.id]?.humanFriendlyDisplay ??
+											recommendation.humanFriendlyDisplay ??
+											''
+										}
+										aria-label={t('recommendations.humanFriendlyDisplayEditLabel')}
+										onChange={(event) =>
+											onDraftChange(recommendation, 'humanFriendlyDisplay', event.target.value)
+										}
+										onBlur={(event) =>
+											commitMasterField(
+												recommendation,
+												'humanFriendlyDisplay',
+												event.target.value,
+											)
+										}
+									/>
 								</td>
 								<td className="px-1 py-1">
 									<button
@@ -223,6 +248,7 @@ export function RecommendationsPage() {
 												englishName: recommendation.name,
 												englishComponent: recommendation.componentForScoring,
 												englishExplanation: recommendation.explanationForLlm,
+												englishHumanFriendlyDisplay: recommendation.humanFriendlyDisplay,
 											})
 										}
 									>
@@ -240,14 +266,16 @@ export function RecommendationsPage() {
 					englishName={translating.englishName}
 					englishComponent={translating.englishComponent}
 					englishExplanation={translating.englishExplanation}
+					englishHumanFriendlyDisplay={translating.englishHumanFriendlyDisplay}
 					loadTranslations={fetchRecommendationTranslations}
-					onStage={(lang, name, componentForScoring, explanationForLlm, baseVersion) =>
+					onStage={(lang, name, componentForScoring, explanationForLlm, humanFriendlyDisplay, baseVersion) =>
 						commitStageTranslation(
 							translating.recommendationId,
 							lang,
 							name,
 							componentForScoring,
 							explanationForLlm,
+							humanFriendlyDisplay,
 							baseVersion,
 						)
 					}

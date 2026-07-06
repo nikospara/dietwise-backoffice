@@ -12,10 +12,17 @@ const TRANSLATIONS: Record<Language, RecommendationTranslationDetails> = {
 		name: 'Κόκκινο κρέας',
 		componentForScoring: 'κόκκινο κρέας',
 		explanationForLlm: 'Λιγότερο κρέας.',
+		humanFriendlyDisplay: 'Εμφάνιση κρέατος.',
 		version: 2,
 	},
-	LT: { name: null, componentForScoring: null, explanationForLlm: null, version: 0 },
-	NL: { name: 'Rood vlees', componentForScoring: 'rood vlees', explanationForLlm: null, version: 0 },
+	LT: { name: null, componentForScoring: null, explanationForLlm: null, humanFriendlyDisplay: null, version: 0 },
+	NL: {
+		name: 'Rood vlees',
+		componentForScoring: 'rood vlees',
+		explanationForLlm: null,
+		humanFriendlyDisplay: null,
+		version: 0,
+	},
 };
 
 function renderDialog(overrides: Partial<Parameters<typeof RecommendationTranslationsDialog>[0]> = {}) {
@@ -24,6 +31,7 @@ function renderDialog(overrides: Partial<Parameters<typeof RecommendationTransla
 		englishName: 'Decrease red meat',
 		englishComponent: 'red meat',
 		englishExplanation: 'Cured and smoked red meat.',
+		englishHumanFriendlyDisplay: 'Cured and smoked display.',
 		loadTranslations: vi.fn().mockResolvedValue(TRANSLATIONS),
 		onStage: vi.fn(),
 		onRevert: vi.fn(),
@@ -39,7 +47,7 @@ describe('RecommendationTranslationsDialog', () => {
 		vi.clearAllMocks();
 	});
 
-	it('pre-fills each language name, component and explanation and shows the English source', async () => {
+	it('pre-fills each language name, component, explanation and human friendly display and shows the English source', async () => {
 		renderDialog();
 
 		expect(((await screen.findByLabelText('EL recommendations.columnName')) as HTMLInputElement).value).toBe(
@@ -51,6 +59,9 @@ describe('RecommendationTranslationsDialog', () => {
 		expect((screen.getByLabelText('EL recommendations.columnExplanation') as HTMLTextAreaElement).value).toBe(
 			'Λιγότερο κρέας.',
 		);
+		expect(
+			(screen.getByLabelText('EL recommendations.columnHumanFriendlyDisplay') as HTMLTextAreaElement).value,
+		).toBe('Εμφάνιση κρέατος.');
 		expect((screen.getByLabelText('LT recommendations.columnName') as HTMLInputElement).value).toBe('');
 		expect(screen.getByText('Decrease red meat', { exact: false })).not.toBeNull();
 		expect(screen.getByText('red meat')).not.toBeNull();
@@ -67,15 +78,21 @@ describe('RecommendationTranslationsDialog', () => {
 		expect((screen.getByLabelText('LT recommendations.columnExplanation') as HTMLTextAreaElement).placeholder).toBe(
 			'Cured and smoked red meat.',
 		);
+		expect(
+			(screen.getByLabelText('LT recommendations.columnHumanFriendlyDisplay') as HTMLTextAreaElement).placeholder,
+		).toBe('Cured and smoked display.');
 	});
 
 	it('falls back to the field name as placeholder when there is no English source', async () => {
-		renderDialog({ englishExplanation: null });
+		renderDialog({ englishExplanation: null, englishHumanFriendlyDisplay: null });
 
 		const ltExplanation = (await screen.findByLabelText(
 			'LT recommendations.columnExplanation',
 		)) as HTMLTextAreaElement;
 		expect(ltExplanation.placeholder).toBe('recommendations.columnExplanation');
+		expect(
+			(screen.getByLabelText('LT recommendations.columnHumanFriendlyDisplay') as HTMLTextAreaElement).placeholder,
+		).toBe('recommendations.columnHumanFriendlyDisplay');
 	});
 
 	it('offers revert only for a staged language and reverts it against its version', async () => {
@@ -88,7 +105,7 @@ describe('RecommendationTranslationsDialog', () => {
 		expect(onRevert).toHaveBeenCalledWith('EL', 2);
 	});
 
-	it('disables save until a language is edited, then stages all three fields against its version', async () => {
+	it('disables save until a language is edited, then stages all four fields against its version', async () => {
 		const { onStage } = renderDialog();
 
 		const greekName = (await screen.findByLabelText('EL recommendations.columnName')) as HTMLInputElement;
@@ -97,7 +114,33 @@ describe('RecommendationTranslationsDialog', () => {
 		expect((screen.getAllByText('recommendations.translationSave')[0] as HTMLButtonElement).disabled).toBe(false);
 		fireEvent.click(screen.getAllByText('recommendations.translationSave')[0]);
 
-		expect(onStage).toHaveBeenCalledWith('EL', 'Μοσχάρι', 'κόκκινο κρέας', 'Λιγότερο κρέας.', 2);
+		expect(onStage).toHaveBeenCalledWith(
+			'EL',
+			'Μοσχάρι',
+			'κόκκινο κρέας',
+			'Λιγότερο κρέας.',
+			'Εμφάνιση κρέατος.',
+			2,
+		);
+	});
+
+	it('stages an edited human friendly display for a language against its version', async () => {
+		const { onStage } = renderDialog();
+
+		const greekDisplay = (await screen.findByLabelText(
+			'EL recommendations.columnHumanFriendlyDisplay',
+		)) as HTMLTextAreaElement;
+		fireEvent.change(greekDisplay, { target: { value: 'Νέα εμφάνιση.' } });
+		fireEvent.click(screen.getAllByText('recommendations.translationSave')[0]);
+
+		expect(onStage).toHaveBeenCalledWith(
+			'EL',
+			'Κόκκινο κρέας',
+			'κόκκινο κρέας',
+			'Λιγότερο κρέας.',
+			'Νέα εμφάνιση.',
+			2,
+		);
 	});
 
 	it('stages null fields when a language is cleared', async () => {
@@ -107,9 +150,12 @@ describe('RecommendationTranslationsDialog', () => {
 		fireEvent.change(greekName, { target: { value: '   ' } });
 		fireEvent.change(screen.getByLabelText('EL recommendations.columnComponent'), { target: { value: '' } });
 		fireEvent.change(screen.getByLabelText('EL recommendations.columnExplanation'), { target: { value: '' } });
+		fireEvent.change(screen.getByLabelText('EL recommendations.columnHumanFriendlyDisplay'), {
+			target: { value: '' },
+		});
 		fireEvent.click(screen.getAllByText('recommendations.translationSave')[0]);
 
-		expect(onStage).toHaveBeenCalledWith('EL', null, null, null, 2);
+		expect(onStage).toHaveBeenCalledWith('EL', null, null, null, null, 2);
 	});
 
 	it('refreshes the saved language version and resets its draft while keeping other languages’ edits', async () => {
@@ -122,6 +168,7 @@ describe('RecommendationTranslationsDialog', () => {
 					name: 'Μοσχάρι',
 					componentForScoring: 'κόκκινο κρέας',
 					explanationForLlm: 'Λιγότερο κρέας.',
+					humanFriendlyDisplay: 'Εμφάνιση κρέατος.',
 					version: 5,
 				},
 			});
@@ -133,7 +180,14 @@ describe('RecommendationTranslationsDialog', () => {
 		fireEvent.change(screen.getByLabelText('LT recommendations.columnName'), { target: { value: 'Jautiena' } });
 		fireEvent.click(screen.getAllByText('recommendations.translationSave')[0]);
 
-		expect(onStage).toHaveBeenCalledWith('EL', 'Μοσχάρι', 'κόκκινο κρέας', 'Λιγότερο κρέας.', 2);
+		expect(onStage).toHaveBeenCalledWith(
+			'EL',
+			'Μοσχάρι',
+			'κόκκινο κρέας',
+			'Λιγότερο κρέας.',
+			'Εμφάνιση κρέατος.',
+			2,
+		);
 		await waitFor(() =>
 			expect((screen.getAllByText('recommendations.translationSave')[0] as HTMLButtonElement).disabled).toBe(
 				true,
@@ -143,7 +197,14 @@ describe('RecommendationTranslationsDialog', () => {
 
 		fireEvent.change(screen.getByLabelText('EL recommendations.columnName'), { target: { value: 'Μοσχαράκι' } });
 		fireEvent.click(screen.getAllByText('recommendations.translationSave')[0]);
-		expect(onStage).toHaveBeenLastCalledWith('EL', 'Μοσχαράκι', 'κόκκινο κρέας', 'Λιγότερο κρέας.', 5);
+		expect(onStage).toHaveBeenLastCalledWith(
+			'EL',
+			'Μοσχαράκι',
+			'κόκκινο κρέας',
+			'Λιγότερο κρέας.',
+			'Εμφάνιση κρέατος.',
+			5,
+		);
 	});
 
 	it('calls onCancel when closed', async () => {

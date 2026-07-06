@@ -17,7 +17,12 @@ export interface Recommendation {
 	explanationForLlm: string | null;
 	/** Whether the explanation differs from published master because of a Staged Change. */
 	explanationChanged: boolean;
-	/** Working Copy version to base the next explanation edit on (0 when there is no Staged Change yet). */
+	/** Effective English human friendly display (published master overlaid by any Staged Change); may be empty. */
+	humanFriendlyDisplay: string | null;
+	/** Whether the human friendly display differs from published master because of a Staged Change. */
+	humanFriendlyDisplayChanged: boolean;
+	/** Working Copy version to base the next master edit on (0 when there is no Staged Change yet). The explanation and
+	 * human friendly display share this version and are staged and reverted together. */
 	version: number;
 	translations: Record<Language, TranslationState>;
 }
@@ -26,36 +31,38 @@ export function fetchRecommendations(): Promise<Recommendation[]> {
 	return apiFetch<Recommendation[]>('/recommendations');
 }
 
-interface StagedVersionResponse {
-	version: number;
-}
-
 /**
- * Stages a Recommendation's English explanation for the LLM in the Working Copy, leaving published master untouched.
- * Resolves with the Recommendation's new Working Copy version (0 when the edit collapsed back to master). Rejects with
- * {@link ApiError} status 409 when the base version is stale (someone changed it since it was loaded).
+ * Stages a Recommendation's English master text — its explanation for the LLM and human friendly display — in the
+ * Working Copy, leaving published master untouched. The two fields share one version and are staged together. Rejects
+ * with {@link ApiError} status 409 when the base version is stale (someone changed it since it was loaded).
  */
-export function stageExplanation(id: string, explanationForLlm: string | null, baseVersion: number): Promise<number> {
-	return apiFetch<StagedVersionResponse>(`/recommendations/${id}/explanation`, {
+export function stageMaster(
+	id: string,
+	explanationForLlm: string | null,
+	humanFriendlyDisplay: string | null,
+	baseVersion: number,
+): Promise<void> {
+	return apiFetch<void>(`/recommendations/${id}/master`, {
 		method: 'PUT',
-		body: JSON.stringify({ explanationForLlm, baseVersion }),
-	}).then((response) => response.version);
+		body: JSON.stringify({ explanationForLlm, humanFriendlyDisplay, baseVersion }),
+	});
 }
 
 /**
- * Reverts a Recommendation's staged explanation, restoring the published master value and removing the Staged Change.
+ * Reverts a Recommendation's staged master text, restoring the published master values and removing the Staged Change.
  * Rejects with {@link ApiError} status 409 when the base version is stale.
  */
-export function revertExplanation(id: string, baseVersion: number): Promise<void> {
-	return apiFetch<void>(`/recommendations/${id}/explanation?baseVersion=${baseVersion}`, { method: 'DELETE' });
+export function revertMaster(id: string, baseVersion: number): Promise<void> {
+	return apiFetch<void>(`/recommendations/${id}/master?baseVersion=${baseVersion}`, { method: 'DELETE' });
 }
 
 /** The effective translation of a Recommendation in one language (published master overlaid by any Staged Change). The
- * three fields share a single version, so they are staged and reverted together; a field is null when absent. */
+ * four fields share a single version, so they are staged and reverted together; a field is null when absent. */
 export interface RecommendationTranslationDetails {
 	name: string | null;
 	componentForScoring: string | null;
 	explanationForLlm: string | null;
+	humanFriendlyDisplay: string | null;
 	/** Working Copy version to base the next edit on (0 when there is no Staged Change yet). */
 	version: number;
 }
@@ -71,9 +78,9 @@ export function fetchRecommendationTranslations(
 }
 
 /**
- * Stages a Recommendation's name, component for scoring and explanation translation for one language in the Working
- * Copy, leaving published master untouched. A null field clears that part of the translation. Rejects with
- * {@link ApiError} status 409 when the base version is stale.
+ * Stages a Recommendation's name, component for scoring, explanation and human friendly display translation for one
+ * language in the Working Copy, leaving published master untouched. A null field clears that part of the translation.
+ * Rejects with {@link ApiError} status 409 when the base version is stale.
  */
 export function stageRecommendationTranslation(
 	id: string,
@@ -81,11 +88,12 @@ export function stageRecommendationTranslation(
 	name: string | null,
 	componentForScoring: string | null,
 	explanationForLlm: string | null,
+	humanFriendlyDisplay: string | null,
 	baseVersion: number,
 ): Promise<void> {
 	return apiFetch<void>(`/recommendations/${id}/translations/${lang}`, {
 		method: 'PUT',
-		body: JSON.stringify({ name, componentForScoring, explanationForLlm, baseVersion }),
+		body: JSON.stringify({ name, componentForScoring, explanationForLlm, humanFriendlyDisplay, baseVersion }),
 	});
 }
 
