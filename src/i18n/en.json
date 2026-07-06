@@ -6,7 +6,8 @@
 		"home": "Home",
 		"rules": "Rules",
 		"recommendations": "Recommendations",
-		"substitutionValue": "Substitution Value"
+		"substitutionValue": "Substitution Value",
+		"seasonalityCost": "Seasonality & Cost"
 	},
 	"auth": {
 		"signingIn": "Signing in…",
@@ -130,6 +131,20 @@
 		"addPlaceholder": "New alternative ingredient…",
 		"add": "Add",
 		"duplicateName": "An alternative ingredient with this name already exists.",
+		"staleReload": "Someone changed this since you loaded it. The grid was refreshed — please redo your edit."
+	},
+	"seasonalityCost": {
+		"title": "Seasonality & Cost",
+		"loading": "Loading seasonality and cost…",
+		"loadError": "Could not load seasonality and cost. Please try again.",
+		"columnName": "Alternative Ingredient",
+		"seasonality": "Seasonality",
+		"cost": "Cost",
+		"seasonalityCell": "Seasonality",
+		"costCell": "Cost",
+		"seasonalityPlaceholder": "e.g. 1-5",
+		"costEmpty": "—",
+		"newBadge": "New",
 		"staleReload": "Someone changed this since you loaded it. The grid was refreshed — please redo your edit."
 	},
 	"home": {

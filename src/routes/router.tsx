@@ -6,6 +6,7 @@ import { HomePage } from '@/pages/HomePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { RecommendationsPage } from '@/recommendations/RecommendationsPage';
 import { RulesPage } from '@/rules/RulesPage';
+import { SeasonalityCostPage } from '@/seasonalityCost/SeasonalityCostPage';
 import { SubstitutionValuePage } from '@/alternativeIngredients/SubstitutionValuePage';
 
 export const router = createBrowserRouter(
@@ -40,6 +41,14 @@ export const router = createBrowserRouter(
 					element: (
 						<RequireBackofficeRole>
 							<SubstitutionValuePage />
+						</RequireBackofficeRole>
+					),
+				},
+				{
+					path: 'seasonality-cost',
+					element: (
+						<RequireBackofficeRole>
+							<SeasonalityCostPage />
 						</RequireBackofficeRole>
 					),
 				},
