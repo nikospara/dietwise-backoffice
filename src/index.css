@@ -35,3 +35,33 @@
 body {
 	font-size: 16px;
 }
+
+/* Partially-translated chips: diagonal stripes of the state colour over transparent, so a chip reads as "some fields
+ * translated" distinctly from a fully-translated (solid) one. `-warning` when a change is pending, `-success` when not. */
+.badge-striped-warning,
+.badge-striped-success {
+	background-color: transparent;
+	color: var(--color-base-content);
+}
+
+.badge-striped-warning {
+	border-color: var(--color-warning);
+	background-image: repeating-linear-gradient(
+		45deg,
+		var(--color-warning) 0,
+		var(--color-warning) 2px,
+		transparent 2px,
+		transparent 6px
+	);
+}
+
+.badge-striped-success {
+	border-color: var(--color-success);
+	background-image: repeating-linear-gradient(
+		45deg,
+		var(--color-success) 0,
+		var(--color-success) 2px,
+		transparent 2px,
+		transparent 6px
+	);
+}

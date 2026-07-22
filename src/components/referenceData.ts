@@ -4,8 +4,10 @@ export type Language = 'EL' | 'LT' | 'NL';
 /** The non-English languages, in display order. */
 export const LANGUAGES: Language[] = ['EL', 'LT', 'NL'];
 
-/** Whether a translatable thing is translated in a given language, missing (falls back to English), or has a pending change. */
-export type TranslationState = 'MISSING' | 'PRESENT' | 'STAGED';
+/** How complete a translatable thing is in a given language: every field empty (missing, falls back to English), some
+ * fields translated (partial), or every field translated (present) — each optionally carrying a pending Working Copy
+ * change (the `*_STAGED` variants). */
+export type TranslationState = 'MISSING' | 'PARTIAL' | 'PRESENT' | 'PARTIAL_STAGED' | 'STAGED';
 
 /** An effective translated text and the Working Copy version a subsequent edit must be based on (0 when not staged). */
 export interface VersionedText {

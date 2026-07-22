@@ -13,6 +13,13 @@ describe('TranslationChips', () => {
 		expect(screen.getByText('NL').closest('span.badge')?.className).toContain('badge-ghost');
 	});
 
+	it('stripes a partially translated language: green when unchanged, orange when a change is pending', () => {
+		render(<TranslationChips languages={['EL', 'LT']} states={{ EL: 'PARTIAL', LT: 'PARTIAL_STAGED' }} />);
+
+		expect(screen.getByText('EL').closest('span.badge')?.className).toContain('badge-striped-success');
+		expect(screen.getByText('LT').closest('span.badge')?.className).toContain('badge-striped-warning');
+	});
+
 	it('shows the full language code and its single-letter abbreviation', () => {
 		render(<TranslationChips languages={['EL']} states={{ EL: 'PRESENT' }} />);
 

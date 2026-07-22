@@ -4,7 +4,7 @@ export type Language = 'EL' | 'LT' | 'NL';
 
 export const LANGUAGES: Language[] = ['EL', 'LT', 'NL'];
 
-export type TranslationState = 'MISSING' | 'PRESENT' | 'STAGED';
+export type TranslationState = 'MISSING' | 'PARTIAL' | 'PRESENT' | 'PARTIAL_STAGED' | 'STAGED';
 
 export type RecommendationWeight = 'ENCOURAGED' | 'LIMITED';
 
