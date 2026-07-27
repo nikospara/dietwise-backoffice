@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MAX_LENGTHS } from '@/api/fieldLimits';
 import type { ReferenceDetails } from '@/components/referenceData';
 import { ReferenceEditDialog } from './ReferenceEditDialog';
 
@@ -37,6 +38,16 @@ describe('ReferenceEditDialog', () => {
 		expect(name.value).toBe('Beef');
 		expect((screen.getByLabelText('reference.editExplanation') as HTMLTextAreaElement).value).toBe('Red meat.');
 		expect(screen.getByText('Affects 3 rules')).not.toBeNull();
+	});
+
+	it('caps the name and explanation at the lengths the backend accepts', async () => {
+		renderDialog();
+
+		const name = (await screen.findByLabelText('reference.editName')) as HTMLInputElement;
+		expect(name.maxLength).toBe(MAX_LENGTHS.referenceName);
+		expect((screen.getByLabelText('reference.editExplanation') as HTMLTextAreaElement).maxLength).toBe(
+			MAX_LENGTHS.referenceExplanation,
+		);
 	});
 
 	it('omits the blast radius when none is given', async () => {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FiTrash2, FiX } from 'react-icons/fi';
 import { ApiError } from '@/api/client';
+import { MAX_LENGTHS } from '@/api/fieldLimits';
 import { type Language, LANGUAGES } from '@/components/referenceData';
 import { ReferenceEditDialog } from '@/components/ReferenceEditDialog';
 import { ReferenceTranslationsDialog } from '@/components/ReferenceTranslationsDialog';
@@ -274,6 +275,7 @@ export function SubstitutionValuePage() {
 					type="text"
 					className="input-bordered input input-sm"
 					aria-label={t('substitutionValue.addLabel')}
+					maxLength={MAX_LENGTHS.referenceName}
 					placeholder={t('substitutionValue.addPlaceholder')}
 					value={newName}
 					onChange={(event) => {

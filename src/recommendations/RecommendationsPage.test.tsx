@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/client';
+import { MAX_LENGTHS } from '@/api/fieldLimits';
 import {
 	type Recommendation,
 	type RecommendationTranslationDetails,
@@ -117,6 +118,18 @@ describe('RecommendationsPage', () => {
 		expect(explanation.value).toBe('');
 		const display = screen.getByLabelText('recommendations.humanFriendlyDisplayEditLabel') as HTMLInputElement;
 		expect(display.value).toBe('');
+	});
+
+	it('caps the explanation and human friendly display at the lengths the backend accepts', async () => {
+		fetchRecommendationsMock.mockResolvedValue([ENCOURAGED_RECOMMENDATION]);
+
+		render(<RecommendationsPage />);
+
+		const explanation = (await screen.findByLabelText('recommendations.explanationEditLabel')) as HTMLInputElement;
+		expect(explanation.maxLength).toBe(MAX_LENGTHS.recommendationExplanation);
+		expect(
+			(screen.getByLabelText('recommendations.humanFriendlyDisplayEditLabel') as HTMLInputElement).maxLength,
+		).toBe(MAX_LENGTHS.recommendationHumanFriendlyDisplay);
 	});
 
 	it('renders a translation chip per language', async () => {

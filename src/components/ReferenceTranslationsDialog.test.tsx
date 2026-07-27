@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MAX_LENGTHS } from '@/api/fieldLimits';
 import type { Language, ReferenceDetails } from '@/components/referenceData';
 import { ReferenceTranslationsDialog } from './ReferenceTranslationsDialog';
 
@@ -43,6 +44,20 @@ describe('ReferenceTranslationsDialog', () => {
 		expect((screen.getByLabelText('NL reference.editName') as HTMLInputElement).value).toBe('Rundvlees');
 		expect((screen.getByLabelText('LT reference.editName') as HTMLInputElement).value).toBe('');
 		expect(screen.getByText('Beef', { exact: false })).not.toBeNull();
+	});
+
+	it('caps every language name and explanation at the lengths the backend accepts', async () => {
+		renderDialog();
+
+		await screen.findByLabelText('EL reference.editName');
+		for (const lang of ['EL', 'LT', 'NL']) {
+			expect((screen.getByLabelText(`${lang} reference.editName`) as HTMLInputElement).maxLength).toBe(
+				MAX_LENGTHS.referenceName,
+			);
+			expect((screen.getByLabelText(`${lang} reference.editExplanation`) as HTMLTextAreaElement).maxLength).toBe(
+				MAX_LENGTHS.referenceExplanation,
+			);
+		}
 	});
 
 	it('shows the English name as placeholder and the field name for the explanation', async () => {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FiThumbsDown, FiThumbsUp } from 'react-icons/fi';
 import { ApiError } from '@/api/client';
+import { MAX_LENGTHS } from '@/api/fieldLimits';
 import {
 	type Language,
 	LANGUAGES,
@@ -196,6 +197,7 @@ export function RecommendationsPage() {
 												''
 											}
 											aria-label={t('recommendations.explanationEditLabel')}
+											maxLength={MAX_LENGTHS.recommendationExplanation}
 											onChange={(event) =>
 												onDraftChange(recommendation, 'explanation', event.target.value)
 											}
@@ -225,6 +227,7 @@ export function RecommendationsPage() {
 											''
 										}
 										aria-label={t('recommendations.humanFriendlyDisplayEditLabel')}
+										maxLength={MAX_LENGTHS.recommendationHumanFriendlyDisplay}
 										onChange={(event) =>
 											onDraftChange(recommendation, 'humanFriendlyDisplay', event.target.value)
 										}

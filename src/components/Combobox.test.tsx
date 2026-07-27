@@ -15,6 +15,12 @@ describe('Combobox', () => {
 		expect((screen.getByLabelText('trigger') as HTMLInputElement).value).toBe('Pork');
 	});
 
+	it('caps the typed text at maxLength when one is given', () => {
+		render(<Combobox options={OPTIONS} value={null} onChange={vi.fn()} label="trigger" maxLength={200} />);
+
+		expect((screen.getByLabelText('trigger') as HTMLInputElement).maxLength).toBe(200);
+	});
+
 	it('filters options by the typed query and reports the chosen id', () => {
 		const onChange = vi.fn();
 		render(<Combobox options={OPTIONS} value={null} onChange={onChange} label="trigger" />);

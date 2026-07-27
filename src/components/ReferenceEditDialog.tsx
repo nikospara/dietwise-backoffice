@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MAX_LENGTHS } from '@/api/fieldLimits';
 import { type ReferenceDetails } from '@/components/referenceData';
 
 interface ReferenceEditDialogProps {
@@ -86,6 +87,7 @@ export function ReferenceEditDialog({
 								type="text"
 								className="input-bordered input w-full input-sm"
 								aria-label={t('reference.editName')}
+								maxLength={MAX_LENGTHS.referenceName}
 								value={name}
 								onChange={(event) => setName(event.target.value)}
 							/>
@@ -95,6 +97,7 @@ export function ReferenceEditDialog({
 							<textarea
 								className="textarea-bordered textarea w-full"
 								aria-label={t('reference.editExplanation')}
+								maxLength={MAX_LENGTHS.referenceExplanation}
 								value={explanation}
 								onChange={(event) => setExplanation(event.target.value)}
 							/>

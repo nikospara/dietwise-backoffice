@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/client';
+import { MAX_LENGTHS } from '@/api/fieldLimits';
 import {
 	type AlternativeIngredientDetails,
 	createAlternativeIngredient,
@@ -329,6 +330,30 @@ describe('RulesPage', () => {
 		expect(rationaleInputs).toHaveLength(2);
 		expect(rationaleInputs[0].value).toBe('Use plant proteins.');
 		expect(rationaleInputs[1].value).toBe('');
+	});
+
+	it('caps the rationale and each suggestion template field at the length the backend accepts', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([template('s1', 'Brown lentils (cooked)')]);
+
+		render(<RulesPage />);
+
+		const rationale = (await screen.findByLabelText('rules.rationaleEditLabel')) as HTMLInputElement;
+		expect(rationale.maxLength).toBe(MAX_LENGTHS.ruleRationale);
+
+		fireEvent.click(screen.getByRole('button', { name: 'rules.toggleSuggestions' }));
+
+		const restriction = (await screen.findByLabelText(
+			'rules.templateRestriction Brown lentils (cooked)',
+		)) as HTMLInputElement;
+		expect(restriction.maxLength).toBe(MAX_LENGTHS.templateField.RESTRICTION);
+		expect(
+			(screen.getByLabelText('rules.templateEquivalence Brown lentils (cooked)') as HTMLInputElement).maxLength,
+		).toBe(MAX_LENGTHS.templateField.EQUIVALENCE);
+		expect(
+			(screen.getByLabelText('rules.templateTechniqueNotes Brown lentils (cooked)') as HTMLInputElement)
+				.maxLength,
+		).toBe(MAX_LENGTHS.templateField.TECHNIQUE_NOTES);
 	});
 
 	it('shows an error message when the rules cannot be loaded', async () => {

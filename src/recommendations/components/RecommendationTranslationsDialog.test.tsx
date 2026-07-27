@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MAX_LENGTHS } from '@/api/fieldLimits';
 import type { Language, RecommendationTranslationDetails } from '@/recommendations/recommendations';
 import { RecommendationTranslationsDialog } from './RecommendationTranslationsDialog';
 
@@ -65,6 +66,27 @@ describe('RecommendationTranslationsDialog', () => {
 		expect((screen.getByLabelText('LT recommendations.columnName') as HTMLInputElement).value).toBe('');
 		expect(screen.getByText('Decrease red meat', { exact: false })).not.toBeNull();
 		expect(screen.getByText('red meat')).not.toBeNull();
+	});
+
+	it('caps every language field at the length the backend accepts', async () => {
+		renderDialog();
+
+		await screen.findByLabelText('EL recommendations.columnName');
+		for (const lang of ['EL', 'LT', 'NL']) {
+			expect((screen.getByLabelText(`${lang} recommendations.columnName`) as HTMLInputElement).maxLength).toBe(
+				MAX_LENGTHS.recommendationName,
+			);
+			expect(
+				(screen.getByLabelText(`${lang} recommendations.columnComponent`) as HTMLInputElement).maxLength,
+			).toBe(MAX_LENGTHS.recommendationComponentForScoring);
+			expect(
+				(screen.getByLabelText(`${lang} recommendations.columnExplanation`) as HTMLTextAreaElement).maxLength,
+			).toBe(MAX_LENGTHS.recommendationExplanation);
+			expect(
+				(screen.getByLabelText(`${lang} recommendations.columnHumanFriendlyDisplay`) as HTMLTextAreaElement)
+					.maxLength,
+			).toBe(MAX_LENGTHS.recommendationHumanFriendlyDisplay);
+		}
 	});
 
 	it('shows the English source as placeholder so an empty field reads as falling back to English', async () => {

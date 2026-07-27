@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MAX_LENGTHS } from '@/api/fieldLimits';
 import { type Language, LANGUAGES, type VersionedText } from '@/components/referenceData';
 
 interface RationaleTranslationsDialogProps {
@@ -98,6 +99,7 @@ export function RationaleTranslationsDialog({
 								<textarea
 									className="textarea-bordered textarea w-full"
 									aria-label={lang}
+									maxLength={MAX_LENGTHS.ruleRationale}
 									placeholder={englishRationale ?? t('rules.columnRationale')}
 									value={value}
 									disabled={current === undefined}

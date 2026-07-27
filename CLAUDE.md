@@ -38,6 +38,7 @@ src/
     <feature>.ts     data layer: the feature's types + fetch/stage/revert functions
     components/       components specific to this feature (e.g. its dialogs)
   api/client.ts      apiFetch + ApiError
+  api/fieldLimits.ts MAX_LENGTHS — the backend's per-field VARCHAR sizes
   auth/              OIDC user manager, role guards
   config/            runtime AppConfig (loaded at startup) + fallback
   i18n/              en.json (only locale) + setup
@@ -53,6 +54,8 @@ Tests are co-located next to what they test and use relative imports (`./X`) so 
 Each feature's `<feature>.ts` wraps `apiFetch` from `@/api/client`. `apiFetch` attaches the bearer token, returns `undefined` for 204, and throws `ApiError` (carrying `.status`) on any non-2xx.
 
 Edits do not mutate published master data — they **stage** into a Working Copy under **optimistic versioning**: every mutation sends a `baseVersion`, and a stale base returns **HTTP 409**. The standard UI response to a 409 is "show a stale-reload warning and reload", never a silent retry (see `commit`/`reload` in the pages). An edit that collapses back to the master value returns version 0 (no staged change).
+
+Text longer than its column fails in the database as an opaque HTTP error, so every editor caps its input with `maxLength` from `MAX_LENGTHS` in `api/fieldLimits.ts`. Those numbers mirror the Liquibase changelogs in `../dietwise` — a new editable field needs an entry there, and a widened column needs the entry updated.
 
 **Known gap:** staged Working-Copy edits are currently inert at runtime — the assessment engine reads master only and there is no publish step yet. Treat the backoffice as staging-only until that lands. (Memory: `dietwise-backoffice-edits-inert-at-runtime`.)
 

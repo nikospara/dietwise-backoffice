@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MAX_LENGTHS } from '@/api/fieldLimits';
 import type { Language, VersionedText } from '@/components/referenceData';
 import { RationaleTranslationsDialog } from './RationaleTranslationsDialog';
 
@@ -45,6 +46,15 @@ describe('RationaleTranslationsDialog', () => {
 		renderDialog();
 
 		expect(((await screen.findByLabelText('LT')) as HTMLTextAreaElement).placeholder).toBe('English rationale.');
+	});
+
+	it('caps every language at the length the backend accepts', async () => {
+		renderDialog();
+
+		await screen.findByLabelText('EL');
+		for (const lang of ['EL', 'LT', 'NL']) {
+			expect((screen.getByLabelText(lang) as HTMLTextAreaElement).maxLength).toBe(MAX_LENGTHS.ruleRationale);
+		}
 	});
 
 	it('falls back to the field name as placeholder when there is no English source', async () => {

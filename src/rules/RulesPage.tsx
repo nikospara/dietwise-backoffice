@@ -52,6 +52,7 @@ import {
 	type SuggestionTemplate,
 	type TemplateField,
 } from '@/rules/rules';
+import { MAX_LENGTHS } from '@/api/fieldLimits';
 import { Combobox } from '@/components/Combobox';
 import { TranslationChips } from '@/components/TranslationChips';
 import { RationaleTranslationsDialog } from '@/rules/components/RationaleTranslationsDialog';
@@ -401,6 +402,7 @@ export function RulesPage() {
 						className={`input-bordered input min-w-0 flex-1 input-xs ${changed ? 'border-warning bg-warning/10' : ''}`}
 						value={templateDrafts[`${template.id}:${field}`] ?? templateFieldValue(template, field) ?? ''}
 						aria-label={`${label} ${template.alternativeIngredientName}`}
+						maxLength={MAX_LENGTHS.templateField[field]}
 						onChange={(event) => onTemplateDraftChange(template.id, field, event.target.value)}
 						onBlur={() => commitTemplateField(ruleId, template, field)}
 					/>
@@ -536,6 +538,7 @@ export function RulesPage() {
 							}}
 							label={t('rules.addTemplateLabel')}
 							placeholder={t('rules.selectAlternative')}
+							maxLength={MAX_LENGTHS.referenceName}
 							onCreate={(name) => commitCreateAlternative(ruleId, name)}
 							createLabel={(name) => t('rules.addOption', { name })}
 						/>
@@ -872,6 +875,7 @@ export function RulesPage() {
 						onChange={setNewTriggerIngredientId}
 						label={t('rules.triggerIngredient')}
 						placeholder={t('rules.selectTriggerIngredient')}
+						maxLength={MAX_LENGTHS.referenceName}
 						onCreate={onCreateTrigger}
 						createLabel={(name) => t('rules.addOption', { name })}
 					/>
@@ -883,6 +887,7 @@ export function RulesPage() {
 						onChange={setNewRoleOrTechniqueId}
 						label={t('rules.roleOrTechnique')}
 						placeholder={t('rules.selectRoleOrTechnique')}
+						maxLength={MAX_LENGTHS.referenceName}
 						clearLabel={t('rules.noRole')}
 						onCreate={onCreateRole}
 						createLabel={(name) => t('rules.addOption', { name })}
@@ -1003,6 +1008,7 @@ export function RulesPage() {
 												className={`input-bordered input min-w-0 flex-1 input-sm ${rationaleChanged ? 'border-warning bg-warning/10' : ''}`}
 												value={drafts[rule.id] ?? rule.rationale ?? ''}
 												aria-label={t('rules.rationaleEditLabel')}
+												maxLength={MAX_LENGTHS.ruleRationale}
 												onChange={(event) => onDraftChange(rule.id, event.target.value)}
 												onBlur={() => commitRationale(rule)}
 											/>

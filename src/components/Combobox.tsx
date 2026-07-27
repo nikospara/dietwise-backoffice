@@ -17,6 +17,8 @@ interface ComboboxProps {
 	onCreate?: (name: string) => void;
 	/** Renders the label of the create entry for the typed name; required for the create entry to appear. */
 	createLabel?: (name: string) => string;
+	/** Caps the typed text, so a name typed to create a new entry cannot exceed what the backend stores. */
+	maxLength?: number;
 }
 
 /**
@@ -34,6 +36,7 @@ export function Combobox({
 	clearLabel,
 	onCreate,
 	createLabel,
+	maxLength,
 }: ComboboxProps) {
 	const [query, setQuery] = useState('');
 	const [open, setOpen] = useState(false);
@@ -64,6 +67,7 @@ export function Combobox({
 				type="text"
 				className="input-bordered input w-full input-sm"
 				aria-label={label}
+				maxLength={maxLength}
 				placeholder={placeholder}
 				value={open ? query : (selected?.name ?? '')}
 				onFocus={() => {

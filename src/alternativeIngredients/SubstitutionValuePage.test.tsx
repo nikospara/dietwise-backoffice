@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/api/client';
+import { MAX_LENGTHS } from '@/api/fieldLimits';
 import {
 	type RecommendationGrid,
 	createAlternativeIngredient,
@@ -135,6 +136,15 @@ describe('SubstitutionValuePage', () => {
 
 		await waitFor(() => expect(createAlternativeIngredientMock).toHaveBeenCalledWith('Quinoa'));
 		await waitFor(() => expect(input.value).toBe(''));
+	});
+
+	it('caps the new ingredient name at the length the backend accepts', async () => {
+		render(<SubstitutionValuePage />);
+		await screen.findByText('legumes');
+
+		expect((screen.getByLabelText('substitutionValue.addLabel') as HTMLInputElement).maxLength).toBe(
+			MAX_LENGTHS.referenceName,
+		);
 	});
 
 	it('warns when the new name duplicates an existing one', async () => {

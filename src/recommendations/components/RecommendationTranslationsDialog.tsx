@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MAX_LENGTHS } from '@/api/fieldLimits';
 import { type Language, LANGUAGES, type RecommendationTranslationDetails } from '@/recommendations/recommendations';
 
 interface RecommendationTranslationsDialogProps {
@@ -146,6 +147,7 @@ export function RecommendationTranslationsDialog({
 									type="text"
 									className="input-bordered input w-full input-sm"
 									aria-label={`${lang} ${t('recommendations.columnName')}`}
+									maxLength={MAX_LENGTHS.recommendationName}
 									placeholder={englishName}
 									value={draft.name}
 									disabled={current === undefined}
@@ -160,6 +162,7 @@ export function RecommendationTranslationsDialog({
 									type="text"
 									className="input-bordered input mt-1 w-full input-sm"
 									aria-label={`${lang} ${t('recommendations.columnComponent')}`}
+									maxLength={MAX_LENGTHS.recommendationComponentForScoring}
 									placeholder={englishComponent}
 									value={draft.component}
 									disabled={current === undefined}
@@ -173,6 +176,7 @@ export function RecommendationTranslationsDialog({
 								<textarea
 									className="textarea-bordered textarea mt-1 w-full"
 									aria-label={`${lang} ${t('recommendations.columnExplanation')}`}
+									maxLength={MAX_LENGTHS.recommendationExplanation}
 									placeholder={englishExplanation ?? t('recommendations.columnExplanation')}
 									value={draft.explanation}
 									disabled={current === undefined}
@@ -186,6 +190,7 @@ export function RecommendationTranslationsDialog({
 								<textarea
 									className="textarea-bordered textarea mt-1 w-full"
 									aria-label={`${lang} ${t('recommendations.columnHumanFriendlyDisplay')}`}
+									maxLength={MAX_LENGTHS.recommendationHumanFriendlyDisplay}
 									placeholder={
 										englishHumanFriendlyDisplay ?? t('recommendations.columnHumanFriendlyDisplay')
 									}
