@@ -14,7 +14,7 @@ export function RequireBackofficeRole({ children }: { children: ReactNode }) {
 	if (!hasBackofficeRole(auth.user?.access_token)) {
 		return (
 			<div className="flex h-full items-center justify-center p-8">
-				<div className="alert alert-error max-w-md">
+				<div className="alert max-w-md alert-error">
 					<span>{t('auth.forbidden')}</span>
 				</div>
 			</div>

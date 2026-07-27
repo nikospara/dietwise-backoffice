@@ -9,17 +9,24 @@ The backend is the sibling repo `../dietwise`. Backoffice features are cut end-t
 - Dev server: `npm run dev` (Vite, port 5174, strict)
 - One-shot tests: `npx vitest run` (`npm test` starts watch mode)
 - Single test file: `npx vitest run src/rules/RulesPage.test.tsx`
-- Typecheck: `npx tsc --noEmit`
+- Typecheck: `npx tsc --noEmit` — TypeScript is deliberately held at 6.x; see [package.json-comments.md](package.json-comments.md) before upgrading to 7
 - Lint: `npx eslint src/` — formatting is Prettier-via-ESLint, so `npx eslint --fix` is how you format
 - Production build: `npm run build` (runs `tsc` then `vite build`)
+- Dependency check: `npm outdated` — versions are pinned exactly on purpose, so nothing refreshes on its own
 
 A change is not done until `npx vitest run`, `npx tsc --noEmit`, and `npx eslint src/` are all clean.
 
 ## Stack
 
-React 19 · TypeScript (strict, `noUnusedLocals`/`noUnusedParameters`) · Vite · Tailwind 4 + daisyUI · react-i18next · jotai · react-router 7 · OIDC via `oidc-client-ts` + `react-oidc-context`. Tests: Vitest + `@testing-library/react` on jsdom.
+React 19 · TypeScript (strict, `noUnusedLocals`/`noUnusedParameters`) · Vite · Tailwind 4 + daisyUI · react-i18next · jotai · react-router 8 · OIDC via `oidc-client-ts` + `react-oidc-context`. Tests: Vitest + `@testing-library/react` on jsdom.
 
 `@/` is the alias for `src/` (tsconfig + Vite). Source is indented with **tabs**.
+
+ESLint 10 runs a **plain flat config** (`eslint.config.js`, ESM) — no `FlatCompat`, no `@eslint/compat`, no `@eslint/eslintrc`. React lint rules come from `@eslint-react/eslint-plugin` and `@stylistic/eslint-plugin`; `eslint-plugin-react` is deliberately absent (it has not supported ESLint 10 since v7.37.5, April 2025 — don't reintroduce it). `no-leaked-conditional-rendering` is type-aware, hence `projectService: true` in the config.
+
+Version pins and `overrides` entries in `package.json` are not self-explanatory and JSON takes no comments, so every deliberate pin or hold-back is justified in **[package.json-comments.md](package.json-comments.md)** — read it before changing a version or dropping an override, and record the reasoning (with a date) when you add one.
+
+Tailwind 4 is configured **CSS-first**: `src/index.css` holds `@import 'tailwindcss'`, `@plugin 'daisyui'` and any `@theme`/`@layer` customisation. There is no `tailwind.config.js` and no PostCSS pipeline — the `@tailwindcss/vite` plugin does the work, and `prettier-plugin-tailwindcss` reads the stylesheet (`tailwindStylesheet` in `.prettierrc.json5`) to sort class names.
 
 ## Structure
 

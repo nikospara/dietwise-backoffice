@@ -125,14 +125,14 @@ export function SeasonalityCostPage() {
 	}
 
 	if (grid === null) {
-		return <span className="loading loading-spinner loading-lg" aria-label={t('seasonalityCost.loading')} />;
+		return <span className="loading loading-lg loading-spinner" aria-label={t('seasonalityCost.loading')} />;
 	}
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			<h1 className="mb-4 text-2xl font-semibold">{t('seasonalityCost.title')}</h1>
 			{conflict ? (
-				<div className="alert alert-warning mb-4">
+				<div className="mb-4 alert alert-warning">
 					<span>{t('seasonalityCost.staleReload')}</span>
 				</div>
 			) : null}
@@ -140,7 +140,7 @@ export function SeasonalityCostPage() {
 				<table className="table-pin-rows table">
 					<thead>
 						<tr>
-							<th className="bg-base-100 sticky left-0 z-20 px-1 py-4">
+							<th className="sticky left-0 z-20 bg-base-100 px-1 py-4">
 								{t('seasonalityCost.columnName')}
 							</th>
 							{grid.countries.map((country) => (
@@ -158,10 +158,10 @@ export function SeasonalityCostPage() {
 					<tbody>
 						{grid.rows.map((row) => (
 							<tr key={row.id}>
-								<th scope="row" className="bg-base-100 sticky left-0 z-10 px-1 py-1 font-normal">
+								<th scope="row" className="sticky left-0 z-10 bg-base-100 px-1 py-1 font-normal">
 									{row.name}
 									{!row.published ? (
-										<span className="badge badge-info badge-sm ml-2">
+										<span className="ml-2 badge badge-sm badge-info">
 											{t('seasonalityCost.newBadge')}
 										</span>
 									) : null}
@@ -174,7 +174,7 @@ export function SeasonalityCostPage() {
 										<td key={`seasonality-${country}`} className="px-1 py-1 text-center">
 											<input
 												type="text"
-												className={`input input-sm input-bordered w-16 text-center ${cell.staged ? 'bg-warning/20' : ''}`}
+												className={`input-bordered input w-16 text-center input-sm ${cell.staged ? 'bg-warning/20' : ''}`}
 												aria-label={`${t('seasonalityCost.seasonalityCell')} ${row.name} ${country}`}
 												placeholder={t('seasonalityCost.seasonalityPlaceholder')}
 												value={value}
@@ -191,7 +191,7 @@ export function SeasonalityCostPage() {
 									return (
 										<td key={`cost-${country}`} className="px-1 py-1 text-center">
 											<select
-												className={`select select-sm select-bordered ${cell.staged ? 'bg-warning/20' : ''}`}
+												className={`select-bordered select select-sm ${cell.staged ? 'bg-warning/20' : ''}`}
 												aria-label={`${t('seasonalityCost.costCell')} ${row.name} ${country}`}
 												value={cell.cost ?? ''}
 												onChange={(event) =>

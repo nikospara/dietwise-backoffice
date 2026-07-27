@@ -398,7 +398,7 @@ export function RulesPage() {
 					<span className="w-28 shrink-0 opacity-70">{label}</span>
 					<input
 						type="text"
-						className={`input input-xs input-bordered min-w-0 flex-1 ${changed ? 'border-warning bg-warning/10' : ''}`}
+						className={`input-bordered input min-w-0 flex-1 input-xs ${changed ? 'border-warning bg-warning/10' : ''}`}
 						value={templateDrafts[`${template.id}:${field}`] ?? templateFieldValue(template, field) ?? ''}
 						aria-label={`${label} ${template.alternativeIngredientName}`}
 						onChange={(event) => onTemplateDraftChange(template.id, field, event.target.value)}
@@ -437,7 +437,7 @@ export function RulesPage() {
 	const renderTemplatesPanel = (ruleId: string) => {
 		const state = templatesByRule[ruleId];
 		if (state === undefined || state === 'loading') {
-			return <span className="loading loading-spinner loading-sm" aria-label={t('rules.templatesLoading')} />;
+			return <span className="loading loading-sm loading-spinner" aria-label={t('rules.templatesLoading')} />;
 		}
 		if (state === 'error') {
 			return (
@@ -460,7 +460,7 @@ export function RulesPage() {
 								<div className="flex min-w-0 flex-col gap-1">
 									<button
 										type="button"
-										className="link link-hover text-left font-medium"
+										className="link text-left font-medium link-hover"
 										aria-label={`${t('rules.editAlternativeIngredient')} ${template.alternativeIngredientName}`}
 										onClick={() => openEditAlternative(template.alternativeIngredientId)}
 									>
@@ -485,7 +485,7 @@ export function RulesPage() {
 								</div>
 								<div className="flex items-center gap-2">
 									{!template.active ? (
-										<span className="badge badge-error badge-sm">
+										<span className="badge badge-sm badge-error">
 											{t('rules.templateDeactivated')}
 										</span>
 									) : null}
@@ -542,7 +542,7 @@ export function RulesPage() {
 					</div>
 				</div>
 				{addNoticeRuleId === ruleId ? (
-					<p className="text-info text-sm">{t('rules.templateAlreadyExists')}</p>
+					<p className="text-sm text-info">{t('rules.templateAlreadyExists')}</p>
 				) : null}
 			</div>
 		);
@@ -721,7 +721,7 @@ export function RulesPage() {
 	}
 
 	if (rules === null) {
-		return <span className="loading loading-spinner loading-lg" aria-label={t('rules.loading')} />;
+		return <span className="loading loading-lg loading-spinner" aria-label={t('rules.loading')} />;
 	}
 
 	let editDialog = null;
@@ -847,13 +847,13 @@ export function RulesPage() {
 		<div className="flex h-full flex-col">
 			<h1 className="mb-4 text-xl font-semibold">{t('rules.title')}</h1>
 			{conflict ? (
-				<div className="alert alert-warning mb-4">
+				<div className="mb-4 alert alert-warning">
 					<span>{t('rules.staleReload')}</span>
 				</div>
 			) : null}
 			<div className="mb-4 flex flex-wrap items-end gap-2">
 				<select
-					className="select select-sm select-bordered"
+					className="select-bordered select select-sm"
 					aria-label={t('rules.recommendation')}
 					value={newRecommendationId}
 					onChange={(event) => setNewRecommendationId(event.target.value)}
@@ -891,7 +891,7 @@ export function RulesPage() {
 				<button type="button" className="btn btn-primary btn-sm" disabled={!canCreate} onClick={submitNewRule}>
 					{t('rules.addRule')}
 				</button>
-				{isDuplicate ? <span className="text-error text-sm">{t('rules.duplicateRule')}</span> : null}
+				{isDuplicate ? <span className="text-sm text-error">{t('rules.duplicateRule')}</span> : null}
 			</div>
 			<div className="min-h-0 flex-1 overflow-auto">
 				<table className="table-pin-rows table min-w-[915px]">
@@ -1000,7 +1000,7 @@ export function RulesPage() {
 										<div className="flex items-center gap-2">
 											<input
 												type="text"
-												className={`input input-sm input-bordered min-w-0 flex-1 ${rationaleChanged ? 'border-warning bg-warning/10' : ''}`}
+												className={`input-bordered input min-w-0 flex-1 input-sm ${rationaleChanged ? 'border-warning bg-warning/10' : ''}`}
 												value={drafts[rule.id] ?? rule.rationale ?? ''}
 												aria-label={t('rules.rationaleEditLabel')}
 												onChange={(event) => onDraftChange(rule.id, event.target.value)}

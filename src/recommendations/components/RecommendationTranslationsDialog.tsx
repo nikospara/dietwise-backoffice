@@ -95,10 +95,10 @@ export function RecommendationTranslationsDialog({
 	};
 
 	return (
-		<div className="modal modal-open" role="dialog" aria-label={t('recommendations.translationsTitle')}>
+		<div className="modal-open modal" role="dialog" aria-label={t('recommendations.translationsTitle')}>
 			<div className="modal-box">
 				<h3 className="text-lg font-semibold">{t('recommendations.translationsTitle')}</h3>
-				<div className="text-base-content/70 mt-2 space-y-1 text-sm">
+				<div className="mt-2 space-y-1 text-sm text-base-content/70">
 					<p>
 						<span className="font-semibold">{t('recommendations.columnName')}:</span> {englishName}
 					</p>
@@ -116,7 +116,7 @@ export function RecommendationTranslationsDialog({
 					</p>
 				</div>
 				{loadFailed ? (
-					<p className="text-error mt-2">{t('recommendations.translationsLoadError')}</p>
+					<p className="mt-2 text-error">{t('recommendations.translationsLoadError')}</p>
 				) : (
 					LANGUAGES.map((lang) => {
 						const current = translations?.[lang];
@@ -144,7 +144,7 @@ export function RecommendationTranslationsDialog({
 								</div>
 								<input
 									type="text"
-									className="input input-sm input-bordered w-full"
+									className="input-bordered input w-full input-sm"
 									aria-label={`${lang} ${t('recommendations.columnName')}`}
 									placeholder={englishName}
 									value={draft.name}
@@ -158,7 +158,7 @@ export function RecommendationTranslationsDialog({
 								/>
 								<input
 									type="text"
-									className="input input-sm input-bordered mt-1 w-full"
+									className="input-bordered input mt-1 w-full input-sm"
 									aria-label={`${lang} ${t('recommendations.columnComponent')}`}
 									placeholder={englishComponent}
 									value={draft.component}
@@ -171,7 +171,7 @@ export function RecommendationTranslationsDialog({
 									}
 								/>
 								<textarea
-									className="textarea textarea-bordered mt-1 w-full"
+									className="textarea-bordered textarea mt-1 w-full"
 									aria-label={`${lang} ${t('recommendations.columnExplanation')}`}
 									placeholder={englishExplanation ?? t('recommendations.columnExplanation')}
 									value={draft.explanation}
@@ -184,7 +184,7 @@ export function RecommendationTranslationsDialog({
 									}
 								/>
 								<textarea
-									className="textarea textarea-bordered mt-1 w-full"
+									className="textarea-bordered textarea mt-1 w-full"
 									aria-label={`${lang} ${t('recommendations.columnHumanFriendlyDisplay')}`}
 									placeholder={
 										englishHumanFriendlyDisplay ?? t('recommendations.columnHumanFriendlyDisplay')

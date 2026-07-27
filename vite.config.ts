@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config';
 import { loadEnv } from 'vite';
 import eslintPlugin from '@nabla/vite-plugin-eslint';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
 
 /**
@@ -13,7 +14,7 @@ export default defineConfig(({ mode }) => {
 
 	return {
 		base: basePath,
-		plugins: [react(), eslintPlugin()],
+		plugins: [react(), tailwindcss(), eslintPlugin()],
 		resolve: {
 			alias: {
 				'@': path.resolve(__dirname, './src'),

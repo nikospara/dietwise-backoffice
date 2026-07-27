@@ -62,7 +62,7 @@ export function Combobox({
 		<div className="relative">
 			<input
 				type="text"
-				className="input input-sm input-bordered w-full"
+				className="input-bordered input w-full input-sm"
 				aria-label={label}
 				placeholder={placeholder}
 				value={open ? query : (selected?.name ?? '')}
@@ -74,7 +74,7 @@ export function Combobox({
 				onBlur={() => setOpen(false)}
 			/>
 			{open ? (
-				<ul className="menu bg-base-100 rounded-box border-base-300 absolute z-10 mt-1 max-h-60 w-full flex-nowrap overflow-auto border shadow">
+				<ul className="menu absolute z-10 mt-1 max-h-60 w-full flex-nowrap overflow-auto rounded-box border border-base-300 bg-base-100 shadow">
 					{clearLabel !== undefined ? (
 						<li>
 							<button type="button" className="italic" onMouseDown={() => select(null)}>

@@ -1,22 +1,14 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
-const { defineConfig, globalIgnores } = require('eslint/config');
+import { defineConfig, globalIgnores } from 'eslint/config';
+import globals from 'globals';
+import tsParser from '@typescript-eslint/parser';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
+import eslintReact from '@eslint-react/eslint-plugin';
+import reactHooks from 'eslint-plugin-react-hooks';
+import importX from 'eslint-plugin-import-x';
+import stylistic from '@stylistic/eslint-plugin';
+import prettierRecommended from 'eslint-plugin-prettier/recommended';
 
-const globals = require('globals');
-const tsParser = require('@typescript-eslint/parser');
-
-const { fixupConfigRules } = require('@eslint/compat');
-
-const js = require('@eslint/js');
-
-const { FlatCompat } = require('@eslint/eslintrc');
-
-const compat = new FlatCompat({
-	baseDirectory: __dirname,
-	recommendedConfig: js.configs.recommended,
-	allConfig: js.configs.all,
-});
-
-module.exports = defineConfig([
+export default defineConfig([
 	{
 		languageOptions: {
 			globals: {
@@ -36,26 +28,27 @@ module.exports = defineConfig([
 					// Enable JSX parsing
 					jsx: true,
 				},
+				// no-leaked-conditional-rendering needs the type of the left-hand operand
+				projectService: true,
+				tsconfigRootDir: import.meta.dirname,
 			},
 		},
 
-		extends: fixupConfigRules(
-			compat.extends(
-				'plugin:@typescript-eslint/recommended',
-				'plugin:react/jsx-runtime',
-				'plugin:react-hooks/recommended',
-				'plugin:import-x/recommended',
-				'plugin:import-x/typescript',
-				// Make prettier as the last item in the extends array, so that it has the opportunity to override other configs
-				'plugin:prettier/recommended',
-			),
-		),
+		plugins: {
+			'@eslint-react': eslintReact,
+			'@stylistic': stylistic,
+		},
+
+		extends: [
+			tsPlugin.configs['flat/recommended'],
+			reactHooks.configs.flat.recommended,
+			importX.flatConfigs.recommended,
+			importX.flatConfigs.typescript,
+			// Make prettier as the last item in the extends array, so that it has the opportunity to override other configs
+			prettierRecommended,
+		],
 
 		settings: {
-			react: {
-				version: 'detect',
-			},
-
 			'import-x/parsers': {
 				'@typescript-eslint/parser': ['.ts', '.tsx'],
 			},
@@ -75,20 +68,14 @@ module.exports = defineConfig([
 					caughtErrorsIgnorePattern: '^_',
 				},
 			],
-			'react/jsx-curly-brace-presence': 'warn',
-			'react/jsx-no-leaked-render': 'warn',
+			'@stylistic/jsx-curly-brace-presence': 'warn',
+			'@eslint-react/no-leaked-conditional-rendering': 'warn',
+			'@eslint-react/no-nested-component-definitions': 'warn',
 			quotes: ['warn', 'single'],
 			'arrow-body-style': 'off',
 			'prefer-arrow-callback': 'off',
 			'prettier/prettier': 'warn',
 			'react-hooks/exhaustive-deps': 'warn',
-
-			'react/no-unstable-nested-components': [
-				'warn',
-				{
-					allowAsProps: true,
-				},
-			],
 
 			'@typescript-eslint/consistent-type-imports': [
 				'error',
@@ -111,7 +98,6 @@ module.exports = defineConfig([
 		'**/*.md',
 		'**/build',
 		'**/dist',
-		'**/.eslintrc.cjs',
 		'**/eslint.config.js',
 		'**/.*',
 	]),

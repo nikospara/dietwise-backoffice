@@ -145,14 +145,14 @@ export function RecommendationsPage() {
 	}
 
 	if (recommendations === null) {
-		return <span className="loading loading-spinner loading-lg" aria-label={t('recommendations.loading')} />;
+		return <span className="loading loading-lg loading-spinner" aria-label={t('recommendations.loading')} />;
 	}
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			<h1 className="mb-4 text-2xl font-semibold">{t('recommendations.title')}</h1>
 			{conflict ? (
-				<div className="alert alert-warning mb-4">
+				<div className="mb-4 alert alert-warning">
 					<span>{t('recommendations.staleReload')}</span>
 				</div>
 			) : null}
@@ -189,7 +189,7 @@ export function RecommendationsPage() {
 									<div className="flex items-center gap-2">
 										<input
 											type="text"
-											className={`input input-sm input-bordered min-w-0 flex-1 ${recommendation.explanationChanged ? 'border-warning bg-warning/10' : ''}`}
+											className={`input-bordered input min-w-0 flex-1 input-sm ${recommendation.explanationChanged ? 'border-warning bg-warning/10' : ''}`}
 											value={
 												drafts[recommendation.id]?.explanation ??
 												recommendation.explanationForLlm ??
@@ -218,7 +218,7 @@ export function RecommendationsPage() {
 								<td className="px-1 py-1">
 									<input
 										type="text"
-										className={`input input-sm input-bordered w-full min-w-0 ${recommendation.humanFriendlyDisplayChanged ? 'border-warning bg-warning/10' : ''}`}
+										className={`input-bordered input w-full min-w-0 input-sm ${recommendation.humanFriendlyDisplayChanged ? 'border-warning bg-warning/10' : ''}`}
 										value={
 											drafts[recommendation.id]?.humanFriendlyDisplay ??
 											recommendation.humanFriendlyDisplay ??

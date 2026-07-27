@@ -72,19 +72,19 @@ export function ReferenceEditDialog({
 	};
 
 	return (
-		<div className="modal modal-open" role="dialog" aria-label={title}>
+		<div className="modal-open modal" role="dialog" aria-label={title}>
 			<div className="modal-box">
 				<h3 className="text-lg font-semibold">{title}</h3>
 				{loadFailed ? (
-					<p className="text-error mt-2">{t('reference.editLoadError')}</p>
+					<p className="mt-2 text-error">{t('reference.editLoadError')}</p>
 				) : (
 					<div>
-						{blastRadius !== null ? <p className="text-warning mt-2 text-sm">{blastRadius}</p> : null}
+						{blastRadius !== null ? <p className="mt-2 text-sm text-warning">{blastRadius}</p> : null}
 						<label className="form-control mt-3 block">
 							<span className="label-text">{t('reference.editName')}</span>
 							<input
 								type="text"
-								className="input input-sm input-bordered w-full"
+								className="input-bordered input w-full input-sm"
 								aria-label={t('reference.editName')}
 								value={name}
 								onChange={(event) => setName(event.target.value)}
@@ -93,14 +93,14 @@ export function ReferenceEditDialog({
 						<label className="form-control mt-3 block">
 							<span className="label-text">{t('reference.editExplanation')}</span>
 							<textarea
-								className="textarea textarea-bordered w-full"
+								className="textarea-bordered textarea w-full"
 								aria-label={t('reference.editExplanation')}
 								value={explanation}
 								onChange={(event) => setExplanation(event.target.value)}
 							/>
 						</label>
 						{isDuplicate ? (
-							<p className="text-error mt-2 text-sm">{t('reference.editDuplicateName')}</p>
+							<p className="mt-2 text-sm text-error">{t('reference.editDuplicateName')}</p>
 						) : null}
 					</div>
 				)}

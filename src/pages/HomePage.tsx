@@ -13,7 +13,7 @@ export function HomePage() {
 		<div>
 			<h1>{t('home.welcome', { name })}</h1>
 
-			<div className="card bg-base-100 border-base-300 mt-4 max-w-xl border">
+			<div className="card mt-4 max-w-xl border border-base-300 bg-base-100">
 				<div className="card-body gap-3">
 					<div>
 						<div className="text-sm opacity-60">{t('home.signedInAs')}</div>

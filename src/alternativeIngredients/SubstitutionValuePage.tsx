@@ -169,19 +169,19 @@ export function SubstitutionValuePage() {
 	}
 
 	if (grid === null) {
-		return <span className="loading loading-spinner loading-lg" aria-label={t('substitutionValue.loading')} />;
+		return <span className="loading loading-lg loading-spinner" aria-label={t('substitutionValue.loading')} />;
 	}
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			<h1 className="mb-4 text-2xl font-semibold">{t('substitutionValue.title')}</h1>
 			{conflict ? (
-				<div className="alert alert-warning mb-4">
+				<div className="mb-4 alert alert-warning">
 					<span>{t('substitutionValue.staleReload')}</span>
 				</div>
 			) : null}
 			{discardBlocked ? (
-				<div className="alert alert-warning mb-4">
+				<div className="mb-4 alert alert-warning">
 					<span>{t('substitutionValue.discardBlocked')}</span>
 				</div>
 			) : null}
@@ -189,7 +189,7 @@ export function SubstitutionValuePage() {
 				<table className="table-pin-rows table">
 					<thead>
 						<tr>
-							<th className="bg-base-100 sticky left-0 z-20 px-1 py-4">
+							<th className="sticky left-0 z-20 bg-base-100 px-1 py-4">
 								{t('substitutionValue.columnName')}
 							</th>
 							<th className="px-1 py-4">{t('substitutionValue.columnTranslations')}</th>
@@ -206,21 +206,21 @@ export function SubstitutionValuePage() {
 					<tbody>
 						{grid.ingredients.map((row) => (
 							<tr key={row.id}>
-								<th scope="row" className="bg-base-100 sticky left-0 z-10 px-1 py-1 font-normal">
+								<th scope="row" className="sticky left-0 z-10 bg-base-100 px-1 py-1 font-normal">
 									<button
 										type="button"
-										className="link link-hover text-left"
+										className="link text-left link-hover"
 										aria-label={`${t('substitutionValue.editAlternativeIngredient')} ${row.name}`}
 										onClick={() => openEdit(row.id)}
 									>
 										{row.name}
 									</button>
 									{!row.published ? (
-										<span className="badge badge-info badge-sm ml-2">
+										<span className="ml-2 badge badge-sm badge-info">
 											{t('substitutionValue.newBadge')}
 										</span>
 									) : row.version > 0 ? (
-										<span className="badge badge-warning badge-sm ml-2">
+										<span className="ml-2 badge badge-sm badge-warning">
 											{t('substitutionValue.pendingBadge')}
 										</span>
 									) : null}
@@ -256,7 +256,7 @@ export function SubstitutionValuePage() {
 									{!row.published ? (
 										<button
 											type="button"
-											className="btn btn-ghost btn-xs text-error"
+											className="btn btn-ghost text-error btn-xs"
 											aria-label={`${t('substitutionValue.discardIngredient')} ${row.name}`}
 											onClick={() => onDiscard(row.id)}
 										>
@@ -272,7 +272,7 @@ export function SubstitutionValuePage() {
 			<div className="mt-4 flex flex-wrap items-center gap-2">
 				<input
 					type="text"
-					className="input input-sm input-bordered"
+					className="input-bordered input input-sm"
 					aria-label={t('substitutionValue.addLabel')}
 					placeholder={t('substitutionValue.addPlaceholder')}
 					value={newName}
@@ -290,7 +290,7 @@ export function SubstitutionValuePage() {
 					{t('substitutionValue.add')}
 				</button>
 				{duplicateName ? (
-					<span className="text-error text-sm">{t('substitutionValue.duplicateName')}</span>
+					<span className="text-sm text-error">{t('substitutionValue.duplicateName')}</span>
 				) : null}
 			</div>
 			{editing !== null ? (

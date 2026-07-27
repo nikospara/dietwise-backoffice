@@ -73,14 +73,14 @@ export function TemplateFieldTranslationsDialog({
 	};
 
 	return (
-		<div className="modal modal-open" role="dialog" aria-label={title}>
+		<div className="modal-open modal" role="dialog" aria-label={title}>
 			<div className="modal-box">
 				<h3 className="text-lg font-semibold">{title}</h3>
-				<p className="text-base-content/70 mt-2 text-sm">
+				<p className="mt-2 text-sm text-base-content/70">
 					<span className="font-semibold">{t('rules.translationsEnglish')}:</span> {englishValue ?? '—'}
 				</p>
 				{loadFailed ? (
-					<p className="text-error mt-2">{t('rules.translationsLoadError')}</p>
+					<p className="mt-2 text-error">{t('rules.translationsLoadError')}</p>
 				) : (
 					LANGUAGES.map((lang) => {
 						const current = translations?.[lang];
@@ -102,7 +102,7 @@ export function TemplateFieldTranslationsDialog({
 									) : null}
 								</div>
 								<textarea
-									className="textarea textarea-bordered w-full"
+									className="textarea-bordered textarea w-full"
 									aria-label={lang}
 									placeholder={englishValue ?? title}
 									value={value}

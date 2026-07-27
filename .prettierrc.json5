@@ -8,7 +8,7 @@
 	bracketSameLine: false,
 	arrowParens: 'always',
 	endOfLine: 'lf',
-	tailwindConfig: './tailwind.config.js',
+	tailwindStylesheet: './src/index.css',
 	tailwindAttributes: ['wrapperClassName', 'wrapClassName', 'rootClassName'],
 	tailwindFunctions: ['classNames', 'classnames', 'twMerge'],
 	overrides: [

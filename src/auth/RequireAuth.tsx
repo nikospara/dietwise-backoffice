@@ -16,7 +16,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 	if (auth.error) {
 		return (
 			<div className="flex h-full items-center justify-center p-8">
-				<div className="alert alert-error max-w-md">
+				<div className="alert max-w-md alert-error">
 					<span>
 						{t('auth.signInError')}: {auth.error.message}
 					</span>
@@ -28,7 +28,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 	if (!auth.isAuthenticated) {
 		return (
 			<div className="flex h-full items-center justify-center p-8">
-				<span className="loading loading-spinner loading-lg" aria-label={t('auth.signingIn')} />
+				<span className="loading loading-lg loading-spinner" aria-label={t('auth.signingIn')} />
 			</div>
 		);
 	}

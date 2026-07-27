@@ -83,14 +83,14 @@ export function ReferenceTranslationsDialog({
 	};
 
 	return (
-		<div className="modal modal-open" role="dialog" aria-label={title}>
+		<div className="modal-open modal" role="dialog" aria-label={title}>
 			<div className="modal-box">
 				<h3 className="text-lg font-semibold">{title}</h3>
-				<p className="text-base-content/70 mt-2 text-sm">
+				<p className="mt-2 text-sm text-base-content/70">
 					<span className="font-semibold">{t('reference.translationsEnglish')}:</span> {englishName}
 				</p>
 				{loadFailed ? (
-					<p className="text-error mt-2">{t('reference.translationsLoadError')}</p>
+					<p className="mt-2 text-error">{t('reference.translationsLoadError')}</p>
 				) : (
 					LANGUAGES.map((lang) => {
 						const current = translations?.[lang];
@@ -116,7 +116,7 @@ export function ReferenceTranslationsDialog({
 								</div>
 								<input
 									type="text"
-									className="input input-sm input-bordered w-full"
+									className="input-bordered input w-full input-sm"
 									aria-label={`${lang} ${t('reference.editName')}`}
 									placeholder={englishName || t('reference.editName')}
 									value={draft.name}
@@ -129,7 +129,7 @@ export function ReferenceTranslationsDialog({
 									}
 								/>
 								<textarea
-									className="textarea textarea-bordered mt-1 w-full"
+									className="textarea-bordered textarea mt-1 w-full"
 									aria-label={`${lang} ${t('reference.editExplanation')}`}
 									placeholder={t('reference.editExplanation')}
 									value={draft.explanation}

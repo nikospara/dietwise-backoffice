@@ -10,11 +10,11 @@ Matches the existing DietWise front-ends:
 
 - **React 19** + **TypeScript** (Vite)
 - **Jotai** for state
-- **react-router v7** (library mode, `createBrowserRouter`)
-- **Tailwind CSS v4** + **DaisyUI v5**
+- **react-router v8** (library mode, `createBrowserRouter`)
+- **Tailwind CSS v4** (`@tailwindcss/vite`, CSS-first config) + **DaisyUI v5**
 - **react-i18next** (English only for now)
 - **OAuth2/OIDC** via `oidc-client-ts` + `react-oidc-context` (Authorization Code + PKCE)
-- ESLint 9 (flat config) + Prettier, Vitest
+- ESLint 10 (flat config, no compat layer) + Prettier, Vitest
 
 ## Getting started
 
