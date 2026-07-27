@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MAX_LENGTHS } from '@/api/fieldLimits';
+import { isTooLong, MAX_LENGTHS } from '@/api/fieldLimits';
 import { type Language, LANGUAGES, type ReferenceDetails } from '@/components/referenceData';
+import { TooLongError } from '@/components/TooLongError';
 
 interface ReferenceTranslationsDialogProps {
 	referenceId: string;
@@ -101,6 +102,9 @@ export function ReferenceTranslationsDialog({
 							current !== undefined &&
 							(draft.name !== (current.name ?? '') ||
 								draft.explanation !== (current.explanationForLlm ?? ''));
+						const overLimit =
+							isTooLong(draft.name, MAX_LENGTHS.referenceName) ||
+							isTooLong(draft.explanation, MAX_LENGTHS.referenceExplanation);
 						return (
 							<div key={lang} className="mt-3">
 								<div className="flex items-center justify-between">
@@ -117,9 +121,8 @@ export function ReferenceTranslationsDialog({
 								</div>
 								<input
 									type="text"
-									className="input-bordered input w-full input-sm"
+									className={`input-bordered input w-full input-sm ${isTooLong(draft.name, MAX_LENGTHS.referenceName) ? 'border-error' : ''}`}
 									aria-label={`${lang} ${t('reference.editName')}`}
-									maxLength={MAX_LENGTHS.referenceName}
 									placeholder={englishName || t('reference.editName')}
 									value={draft.name}
 									disabled={current === undefined}
@@ -130,10 +133,10 @@ export function ReferenceTranslationsDialog({
 										}))
 									}
 								/>
+								<TooLongError value={draft.name} max={MAX_LENGTHS.referenceName} />
 								<textarea
-									className="textarea-bordered textarea mt-1 w-full"
+									className={`textarea-bordered textarea mt-1 w-full ${isTooLong(draft.explanation, MAX_LENGTHS.referenceExplanation) ? 'border-error' : ''}`}
 									aria-label={`${lang} ${t('reference.editExplanation')}`}
-									maxLength={MAX_LENGTHS.referenceExplanation}
 									placeholder={t('reference.editExplanation')}
 									value={draft.explanation}
 									disabled={current === undefined}
@@ -144,11 +147,12 @@ export function ReferenceTranslationsDialog({
 										}))
 									}
 								/>
+								<TooLongError value={draft.explanation} max={MAX_LENGTHS.referenceExplanation} />
 								<div className="mt-1 text-right">
 									<button
 										type="button"
 										className="btn btn-primary btn-xs"
-										disabled={!changed}
+										disabled={!changed || overLimit}
 										onClick={() =>
 											reconcile(lang, () =>
 												onStage(

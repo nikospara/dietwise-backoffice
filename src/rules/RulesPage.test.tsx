@@ -332,28 +332,98 @@ describe('RulesPage', () => {
 		expect(rationaleInputs[1].value).toBe('');
 	});
 
-	it('caps the rationale and each suggestion template field at the length the backend accepts', async () => {
+	it('reports an over-long rationale on blur and does not stage it, keeping the text to be shortened', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		const tooLong = 'r'.repeat(MAX_LENGTHS.ruleRationale + 1);
+
+		render(<RulesPage />);
+
+		const input = (await screen.findByLabelText('rules.rationaleEditLabel')) as HTMLInputElement;
+		fireEvent.change(input, { target: { value: tooLong } });
+		fireEvent.blur(input);
+
+		expect(screen.getByText('validation.tooLong')).not.toBeNull();
+		expect(stageRationaleMock).not.toHaveBeenCalled();
+		expect(input.value).toBe(tooLong);
+		expect(input.className).toContain('border-error');
+	});
+
+	it('marks an over-long rationale as an error rather than as a pending change', async () => {
+		fetchRulesMock.mockResolvedValue([CHANGED_RULE]);
+
+		render(<RulesPage />);
+
+		const input = (await screen.findByLabelText('rules.rationaleEditLabel')) as HTMLInputElement;
+		expect(input.className).toContain('border-warning');
+
+		fireEvent.change(input, { target: { value: 'r'.repeat(MAX_LENGTHS.ruleRationale + 1) } });
+
+		// Both border colours are utilities of the same weight, so the two must never be emitted together.
+		expect(input.className).toContain('border-error');
+		expect(input.className).not.toContain('border-warning');
+	});
+
+	it('stages the rationale on blur once it is shortened to the limit', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		stageRationaleMock.mockResolvedValue(1);
+		const atLimit = 'r'.repeat(MAX_LENGTHS.ruleRationale);
+
+		render(<RulesPage />);
+
+		const input = (await screen.findByLabelText('rules.rationaleEditLabel')) as HTMLInputElement;
+		fireEvent.change(input, { target: { value: atLimit } });
+		fireEvent.blur(input);
+
+		await waitFor(() => expect(stageRationaleMock).toHaveBeenCalledWith('1', atLimit, 0));
+		expect(screen.queryByText('validation.tooLong')).toBeNull();
+	});
+
+	it('reports an over-long suggestion template field on blur and does not stage it', async () => {
 		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
 		fetchSuggestionTemplatesMock.mockResolvedValue([template('s1', 'Brown lentils (cooked)')]);
 
 		render(<RulesPage />);
 
-		const rationale = (await screen.findByLabelText('rules.rationaleEditLabel')) as HTMLInputElement;
-		expect(rationale.maxLength).toBe(MAX_LENGTHS.ruleRationale);
-
+		await screen.findByLabelText('rules.rationaleEditLabel');
 		fireEvent.click(screen.getByRole('button', { name: 'rules.toggleSuggestions' }));
 
 		const restriction = (await screen.findByLabelText(
 			'rules.templateRestriction Brown lentils (cooked)',
 		)) as HTMLInputElement;
-		expect(restriction.maxLength).toBe(MAX_LENGTHS.templateField.RESTRICTION);
+		fireEvent.change(restriction, {
+			target: { value: 'x'.repeat(MAX_LENGTHS.templateField.RESTRICTION + 1) },
+		});
+		fireEvent.blur(restriction);
+
+		expect(screen.getByText('validation.tooLong')).not.toBeNull();
+		expect(stageSuggestionTemplateFieldMock).not.toHaveBeenCalled();
+		expect(restriction.className).toContain('border-error');
 		expect(
-			(screen.getByLabelText('rules.templateEquivalence Brown lentils (cooked)') as HTMLInputElement).maxLength,
-		).toBe(MAX_LENGTHS.templateField.EQUIVALENCE);
-		expect(
-			(screen.getByLabelText('rules.templateTechniqueNotes Brown lentils (cooked)') as HTMLInputElement)
-				.maxLength,
-		).toBe(MAX_LENGTHS.templateField.TECHNIQUE_NOTES);
+			(screen.getByLabelText('rules.templateEquivalence Brown lentils (cooked)') as HTMLInputElement).className,
+		).not.toContain('border-error');
+	});
+
+	it('allows a technique note longer than a restriction, matching its own limit', async () => {
+		fetchRulesMock.mockResolvedValue([UNCHANGED_RULE]);
+		fetchSuggestionTemplatesMock.mockResolvedValue([template('s1', 'Brown lentils (cooked)')]);
+		stageSuggestionTemplateFieldMock.mockResolvedValue(1);
+		const longNote = 'x'.repeat(MAX_LENGTHS.templateField.RESTRICTION + 1);
+
+		render(<RulesPage />);
+
+		await screen.findByLabelText('rules.rationaleEditLabel');
+		fireEvent.click(screen.getByRole('button', { name: 'rules.toggleSuggestions' }));
+
+		const notes = (await screen.findByLabelText(
+			'rules.templateTechniqueNotes Brown lentils (cooked)',
+		)) as HTMLInputElement;
+		fireEvent.change(notes, { target: { value: longNote } });
+		fireEvent.blur(notes);
+
+		await waitFor(() =>
+			expect(stageSuggestionTemplateFieldMock).toHaveBeenCalledWith('s1', 'TECHNIQUE_NOTES', longNote, 0),
+		);
+		expect(screen.queryByText('validation.tooLong')).toBeNull();
 	});
 
 	it('shows an error message when the rules cannot be loaded', async () => {

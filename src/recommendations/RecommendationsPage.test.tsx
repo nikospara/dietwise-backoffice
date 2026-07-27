@@ -120,16 +120,57 @@ describe('RecommendationsPage', () => {
 		expect(display.value).toBe('');
 	});
 
-	it('caps the explanation and human friendly display at the lengths the backend accepts', async () => {
+	it('reports an over-long explanation on blur and does not stage it, keeping the text to be shortened', async () => {
 		fetchRecommendationsMock.mockResolvedValue([ENCOURAGED_RECOMMENDATION]);
+		const tooLong = 'e'.repeat(MAX_LENGTHS.recommendationExplanation + 1);
 
 		render(<RecommendationsPage />);
 
 		const explanation = (await screen.findByLabelText('recommendations.explanationEditLabel')) as HTMLInputElement;
-		expect(explanation.maxLength).toBe(MAX_LENGTHS.recommendationExplanation);
+		fireEvent.change(explanation, { target: { value: tooLong } });
+		fireEvent.blur(explanation);
+
+		expect(screen.getByText('validation.tooLong')).not.toBeNull();
+		expect(stageMasterMock).not.toHaveBeenCalled();
+		expect(explanation.value).toBe(tooLong);
+		expect(explanation.className).toContain('border-error');
+	});
+
+	it('marks an over-long explanation as an error rather than as a pending change', async () => {
+		fetchRecommendationsMock.mockResolvedValue([CHANGED_RECOMMENDATION]);
+
+		render(<RecommendationsPage />);
+
+		const explanation = (await screen.findByLabelText('recommendations.explanationEditLabel')) as HTMLInputElement;
+		expect(explanation.className).toContain('border-warning');
+
+		fireEvent.change(explanation, {
+			target: { value: 'e'.repeat(MAX_LENGTHS.recommendationExplanation + 1) },
+		});
+
+		// Both border colours are utilities of the same weight, so the two must never be emitted together.
+		expect(explanation.className).toContain('border-error');
+		expect(explanation.className).not.toContain('border-warning');
+	});
+
+	it('reports an over-long human friendly display on blur and does not stage it', async () => {
+		fetchRecommendationsMock.mockResolvedValue([ENCOURAGED_RECOMMENDATION]);
+
+		render(<RecommendationsPage />);
+
+		await screen.findByLabelText('recommendations.explanationEditLabel');
+		const display = screen.getByLabelText('recommendations.humanFriendlyDisplayEditLabel') as HTMLInputElement;
+		fireEvent.change(display, {
+			target: { value: 'd'.repeat(MAX_LENGTHS.recommendationHumanFriendlyDisplay + 1) },
+		});
+		fireEvent.blur(display);
+
+		expect(screen.getByText('validation.tooLong')).not.toBeNull();
+		expect(stageMasterMock).not.toHaveBeenCalled();
+		expect(display.className).toContain('border-error');
 		expect(
-			(screen.getByLabelText('recommendations.humanFriendlyDisplayEditLabel') as HTMLInputElement).maxLength,
-		).toBe(MAX_LENGTHS.recommendationHumanFriendlyDisplay);
+			(screen.getByLabelText('recommendations.explanationEditLabel') as HTMLInputElement).className,
+		).not.toContain('border-error');
 	});
 
 	it('renders a translation chip per language', async () => {

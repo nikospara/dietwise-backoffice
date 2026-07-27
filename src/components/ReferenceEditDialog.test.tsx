@@ -40,14 +40,44 @@ describe('ReferenceEditDialog', () => {
 		expect(screen.getByText('Affects 3 rules')).not.toBeNull();
 	});
 
-	it('caps the name and explanation at the lengths the backend accepts', async () => {
+	it('blocks saving and reports a name longer than the backend accepts', async () => {
 		renderDialog();
 
 		const name = (await screen.findByLabelText('reference.editName')) as HTMLInputElement;
-		expect(name.maxLength).toBe(MAX_LENGTHS.referenceName);
-		expect((screen.getByLabelText('reference.editExplanation') as HTMLTextAreaElement).maxLength).toBe(
-			MAX_LENGTHS.referenceExplanation,
+		fireEvent.change(name, { target: { value: 'n'.repeat(MAX_LENGTHS.referenceName + 1) } });
+
+		expect(screen.getByText('validation.tooLong')).not.toBeNull();
+		expect((screen.getByText('reference.editSave') as HTMLButtonElement).disabled).toBe(true);
+		expect(name.className).toContain('border-error');
+	});
+
+	it('blocks saving and reports an explanation longer than the backend accepts', async () => {
+		renderDialog();
+
+		await screen.findByLabelText('reference.editName');
+		const explanation = screen.getByLabelText('reference.editExplanation') as HTMLTextAreaElement;
+		fireEvent.change(explanation, {
+			target: { value: 'e'.repeat(MAX_LENGTHS.referenceExplanation + 1) },
+		});
+
+		expect(screen.getByText('validation.tooLong')).not.toBeNull();
+		expect((screen.getByText('reference.editSave') as HTMLButtonElement).disabled).toBe(true);
+		expect(explanation.className).toContain('border-error');
+		// Only the offending field is marked.
+		expect((screen.getByLabelText('reference.editName') as HTMLInputElement).className).not.toContain(
+			'border-error',
 		);
+	});
+
+	it('keeps saving available at exactly the limit', async () => {
+		renderDialog();
+
+		const name = (await screen.findByLabelText('reference.editName')) as HTMLInputElement;
+		fireEvent.change(name, { target: { value: 'n'.repeat(MAX_LENGTHS.referenceName) } });
+
+		expect(screen.queryByText('validation.tooLong')).toBeNull();
+		expect((screen.getByText('reference.editSave') as HTMLButtonElement).disabled).toBe(false);
+		expect(name.className).not.toContain('border-error');
 	});
 
 	it('omits the blast radius when none is given', async () => {

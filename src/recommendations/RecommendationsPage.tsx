@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FiThumbsDown, FiThumbsUp } from 'react-icons/fi';
 import { ApiError } from '@/api/client';
-import { MAX_LENGTHS } from '@/api/fieldLimits';
+import { isTooLong, MAX_LENGTHS } from '@/api/fieldLimits';
+import { TooLongError } from '@/components/TooLongError';
 import {
 	type Language,
 	LANGUAGES,
@@ -27,6 +28,11 @@ type TranslationTarget = {
 };
 
 type MasterField = 'explanation' | 'humanFriendlyDisplay';
+
+const MASTER_FIELD_MAX_LENGTHS: Record<MasterField, number> = {
+	explanation: MAX_LENGTHS.recommendationExplanation,
+	humanFriendlyDisplay: MAX_LENGTHS.recommendationHumanFriendlyDisplay,
+};
 
 type MasterDraft = { explanation: string; humanFriendlyDisplay: string };
 
@@ -97,7 +103,7 @@ export function RecommendationsPage() {
 	const commitMasterField = (recommendation: Recommendation, field: MasterField, value: string) => {
 		const effective =
 			field === 'explanation' ? recommendation.explanationForLlm : recommendation.humanFriendlyDisplay;
-		if (value === (effective ?? '')) {
+		if (value === (effective ?? '') || isTooLong(value, MASTER_FIELD_MAX_LENGTHS[field])) {
 			return;
 		}
 		return commit(() =>
@@ -172,94 +178,123 @@ export function RecommendationsPage() {
 						</tr>
 					</thead>
 					<tbody>
-						{recommendations.map((recommendation) => (
-							<tr key={recommendation.id}>
-								<td className="px-1 py-1 text-center">
-									<WeightIcon
-										weight={recommendation.weight}
-										label={
-											recommendation.weight === 'ENCOURAGED'
-												? t('recommendations.weightEncouraged')
-												: t('recommendations.weightLimited')
-										}
-									/>
-								</td>
-								<td className="px-1 py-1">{recommendation.name}</td>
-								<td className="px-1 py-1">{recommendation.componentForScoring}</td>
-								<td className="px-1 py-1">
-									<div className="flex items-center gap-2">
-										<input
-											type="text"
-											className={`input-bordered input min-w-0 flex-1 input-sm ${recommendation.explanationChanged ? 'border-warning bg-warning/10' : ''}`}
-											value={
-												drafts[recommendation.id]?.explanation ??
-												recommendation.explanationForLlm ??
-												''
-											}
-											aria-label={t('recommendations.explanationEditLabel')}
-											maxLength={MAX_LENGTHS.recommendationExplanation}
-											onChange={(event) =>
-												onDraftChange(recommendation, 'explanation', event.target.value)
-											}
-											onBlur={(event) =>
-												commitMasterField(recommendation, 'explanation', event.target.value)
+						{recommendations.map((recommendation) => {
+							const explanation =
+								drafts[recommendation.id]?.explanation ?? recommendation.explanationForLlm ?? '';
+							const humanFriendlyDisplay =
+								drafts[recommendation.id]?.humanFriendlyDisplay ??
+								recommendation.humanFriendlyDisplay ??
+								'';
+							return (
+								<tr key={recommendation.id}>
+									<td className="px-1 py-1 text-center">
+										<WeightIcon
+											weight={recommendation.weight}
+											label={
+												recommendation.weight === 'ENCOURAGED'
+													? t('recommendations.weightEncouraged')
+													: t('recommendations.weightLimited')
 											}
 										/>
-										{recommendation.explanationChanged ||
-										recommendation.humanFriendlyDisplayChanged ? (
-											<button
-												type="button"
-												className="btn btn-ghost btn-xs"
-												onClick={() => commitRevertMaster(recommendation)}
-											>
-												{t('recommendations.revert')}
-											</button>
-										) : null}
-									</div>
-								</td>
-								<td className="px-1 py-1">
-									<input
-										type="text"
-										className={`input-bordered input w-full min-w-0 input-sm ${recommendation.humanFriendlyDisplayChanged ? 'border-warning bg-warning/10' : ''}`}
-										value={
-											drafts[recommendation.id]?.humanFriendlyDisplay ??
-											recommendation.humanFriendlyDisplay ??
-											''
-										}
-										aria-label={t('recommendations.humanFriendlyDisplayEditLabel')}
-										maxLength={MAX_LENGTHS.recommendationHumanFriendlyDisplay}
-										onChange={(event) =>
-											onDraftChange(recommendation, 'humanFriendlyDisplay', event.target.value)
-										}
-										onBlur={(event) =>
-											commitMasterField(
-												recommendation,
-												'humanFriendlyDisplay',
-												event.target.value,
-											)
-										}
-									/>
-								</td>
-								<td className="px-1 py-1">
-									<button
-										type="button"
-										className="flex cursor-pointer gap-1"
-										aria-label={t('recommendations.editTranslations')}
-										onClick={() =>
-											setTranslating({
-												recommendationId: recommendation.id,
-												englishName: recommendation.name,
-												englishComponent: recommendation.componentForScoring,
-												englishExplanation: recommendation.explanationForLlm,
-												englishHumanFriendlyDisplay: recommendation.humanFriendlyDisplay,
-											})
-										}
-									>
-										<TranslationChips languages={LANGUAGES} states={recommendation.translations} />
-									</button>
-								</td>
-							</tr>
-						))}
+									</td>
+									<td className="px-1 py-1">{recommendation.name}</td>
+									<td className="px-1 py-1">{recommendation.componentForScoring}</td>
+									<td className="px-1 py-1">
+										<div className="flex items-center gap-2">
+											<input
+												type="text"
+												className={`input-bordered input min-w-0 flex-1 input-sm ${
+													isTooLong(explanation, MAX_LENGTHS.recommendationExplanation)
+														? 'border-error'
+														: recommendation.explanationChanged
+															? 'border-warning bg-warning/10'
+															: ''
+												}`}
+												value={
+													drafts[recommendation.id]?.explanation ??
+													recommendation.explanationForLlm ??
+													''
+												}
+												aria-label={t('recommendations.explanationEditLabel')}
+												onChange={(event) =>
+													onDraftChange(recommendation, 'explanation', event.target.value)
+												}
+												onBlur={(event) =>
+													commitMasterField(recommendation, 'explanation', event.target.value)
+												}
+											/>
+											{recommendation.explanationChanged ||
+											recommendation.humanFriendlyDisplayChanged ? (
+												<button
+													type="button"
+													className="btn btn-ghost btn-xs"
+													onClick={() => commitRevertMaster(recommendation)}
+												>
+													{t('recommendations.revert')}
+												</button>
+											) : null}
+										</div>
+										<TooLongError value={explanation} max={MAX_LENGTHS.recommendationExplanation} />
+									</td>
+									<td className="px-1 py-1">
+										<input
+											type="text"
+											className={`input-bordered input w-full min-w-0 input-sm ${
+												isTooLong(
+													humanFriendlyDisplay,
+													MAX_LENGTHS.recommendationHumanFriendlyDisplay,
+												)
+													? 'border-error'
+													: recommendation.humanFriendlyDisplayChanged
+														? 'border-warning bg-warning/10'
+														: ''
+											}`}
+											value={humanFriendlyDisplay}
+											aria-label={t('recommendations.humanFriendlyDisplayEditLabel')}
+											onChange={(event) =>
+												onDraftChange(
+													recommendation,
+													'humanFriendlyDisplay',
+													event.target.value,
+												)
+											}
+											onBlur={(event) =>
+												commitMasterField(
+													recommendation,
+													'humanFriendlyDisplay',
+													event.target.value,
+												)
+											}
+										/>
+										<TooLongError
+											value={humanFriendlyDisplay}
+											max={MAX_LENGTHS.recommendationHumanFriendlyDisplay}
+										/>
+									</td>
+									<td className="px-1 py-1">
+										<button
+											type="button"
+											className="flex cursor-pointer gap-1"
+											aria-label={t('recommendations.editTranslations')}
+											onClick={() =>
+												setTranslating({
+													recommendationId: recommendation.id,
+													englishName: recommendation.name,
+													englishComponent: recommendation.componentForScoring,
+													englishExplanation: recommendation.explanationForLlm,
+													englishHumanFriendlyDisplay: recommendation.humanFriendlyDisplay,
+												})
+											}
+										>
+											<TranslationChips
+												languages={LANGUAGES}
+												states={recommendation.translations}
+											/>
+										</button>
+									</td>
+								</tr>
+							);
+						})}
 					</tbody>
 				</table>
 			</div>

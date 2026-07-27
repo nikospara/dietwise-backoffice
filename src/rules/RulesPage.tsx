@@ -52,8 +52,9 @@ import {
 	type SuggestionTemplate,
 	type TemplateField,
 } from '@/rules/rules';
-import { MAX_LENGTHS } from '@/api/fieldLimits';
+import { isTooLong, MAX_LENGTHS } from '@/api/fieldLimits';
 import { Combobox } from '@/components/Combobox';
+import { TooLongError } from '@/components/TooLongError';
 import { TranslationChips } from '@/components/TranslationChips';
 import { RationaleTranslationsDialog } from '@/rules/components/RationaleTranslationsDialog';
 import { ReferenceEditDialog } from '@/components/ReferenceEditDialog';
@@ -164,7 +165,7 @@ export function RulesPage() {
 
 	const commitRationale = async (rule: Rule) => {
 		const draft = drafts[rule.id];
-		if (draft === undefined || draft === (rule.rationale ?? '')) {
+		if (draft === undefined || draft === (rule.rationale ?? '') || isTooLong(draft, MAX_LENGTHS.ruleRationale)) {
 			return;
 		}
 		try {
@@ -300,7 +301,11 @@ export function RulesPage() {
 
 	const commitTemplateField = async (ruleId: string, template: SuggestionTemplate, field: TemplateField) => {
 		const draft = templateDrafts[`${template.id}:${field}`];
-		if (draft === undefined || draft === (templateFieldValue(template, field) ?? '')) {
+		if (
+			draft === undefined ||
+			draft === (templateFieldValue(template, field) ?? '') ||
+			isTooLong(draft, MAX_LENGTHS.templateField[field])
+		) {
 			return;
 		}
 		const value = draft === '' ? null : draft;
@@ -393,16 +398,22 @@ export function RulesPage() {
 
 	const renderTemplateField = (ruleId: string, template: SuggestionTemplate, field: TemplateField, label: string) => {
 		const changed = template.changedFields.includes(field);
+		const value = templateDrafts[`${template.id}:${field}`] ?? templateFieldValue(template, field) ?? '';
 		return (
 			<div className="flex flex-col gap-1">
 				<div className="flex items-center gap-2">
 					<span className="w-28 shrink-0 opacity-70">{label}</span>
 					<input
 						type="text"
-						className={`input-bordered input min-w-0 flex-1 input-xs ${changed ? 'border-warning bg-warning/10' : ''}`}
-						value={templateDrafts[`${template.id}:${field}`] ?? templateFieldValue(template, field) ?? ''}
+						className={`input-bordered input min-w-0 flex-1 input-xs ${
+							isTooLong(value, MAX_LENGTHS.templateField[field])
+								? 'border-error'
+								: changed
+									? 'border-warning bg-warning/10'
+									: ''
+						}`}
+						value={value}
 						aria-label={`${label} ${template.alternativeIngredientName}`}
-						maxLength={MAX_LENGTHS.templateField[field]}
 						onChange={(event) => onTemplateDraftChange(template.id, field, event.target.value)}
 						onBlur={() => commitTemplateField(ruleId, template, field)}
 					/>
@@ -416,6 +427,7 @@ export function RulesPage() {
 						</button>
 					) : null}
 				</div>
+				<TooLongError value={value} max={MAX_LENGTHS.templateField[field]} className="pl-28" />
 				<button
 					type="button"
 					className="flex cursor-pointer items-center gap-1 self-start pl-28"
@@ -538,7 +550,7 @@ export function RulesPage() {
 							}}
 							label={t('rules.addTemplateLabel')}
 							placeholder={t('rules.selectAlternative')}
-							maxLength={MAX_LENGTHS.referenceName}
+							maxNameLength={MAX_LENGTHS.referenceName}
 							onCreate={(name) => commitCreateAlternative(ruleId, name)}
 							createLabel={(name) => t('rules.addOption', { name })}
 						/>
@@ -875,7 +887,7 @@ export function RulesPage() {
 						onChange={setNewTriggerIngredientId}
 						label={t('rules.triggerIngredient')}
 						placeholder={t('rules.selectTriggerIngredient')}
-						maxLength={MAX_LENGTHS.referenceName}
+						maxNameLength={MAX_LENGTHS.referenceName}
 						onCreate={onCreateTrigger}
 						createLabel={(name) => t('rules.addOption', { name })}
 					/>
@@ -887,7 +899,7 @@ export function RulesPage() {
 						onChange={setNewRoleOrTechniqueId}
 						label={t('rules.roleOrTechnique')}
 						placeholder={t('rules.selectRoleOrTechnique')}
-						maxLength={MAX_LENGTHS.referenceName}
+						maxNameLength={MAX_LENGTHS.referenceName}
 						clearLabel={t('rules.noRole')}
 						onCreate={onCreateRole}
 						createLabel={(name) => t('rules.addOption', { name })}
@@ -917,6 +929,8 @@ export function RulesPage() {
 							const isNew = rule.changeState === 'NEW';
 							const pending = rule.changeState !== 'UNCHANGED';
 							const rationaleChanged = rule.changedFields.includes('RATIONALE');
+							const rationaleValue = drafts[rule.id] ?? rule.rationale ?? '';
+							const rationaleTooLong = isTooLong(rationaleValue, MAX_LENGTHS.ruleRationale);
 							const triggerChanged = rule.changedFields.includes('TRIGGER_INGREDIENT');
 							const roleChanged = rule.changedFields.includes('ROLE_OR_TECHNIQUE');
 							const suggestionsChanged = rule.changedFields.includes('SUGGESTION_TEMPLATES');
@@ -1005,10 +1019,15 @@ export function RulesPage() {
 										<div className="flex items-center gap-2">
 											<input
 												type="text"
-												className={`input-bordered input min-w-0 flex-1 input-sm ${rationaleChanged ? 'border-warning bg-warning/10' : ''}`}
-												value={drafts[rule.id] ?? rule.rationale ?? ''}
+												className={`input-bordered input min-w-0 flex-1 input-sm ${
+													rationaleTooLong
+														? 'border-error'
+														: rationaleChanged
+															? 'border-warning bg-warning/10'
+															: ''
+												}`}
+												value={rationaleValue}
 												aria-label={t('rules.rationaleEditLabel')}
-												maxLength={MAX_LENGTHS.ruleRationale}
 												onChange={(event) => onDraftChange(rule.id, event.target.value)}
 												onBlur={() => commitRationale(rule)}
 											/>
@@ -1029,6 +1048,7 @@ export function RulesPage() {
 												/>
 											</button>
 										</div>
+										<TooLongError value={rationaleValue} max={MAX_LENGTHS.ruleRationale} />
 									</td>
 									<td className="px-0 py-1">
 										<div className="flex items-center gap-2">

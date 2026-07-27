@@ -2,6 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { Combobox } from './Combobox';
 
+vi.mock('react-i18next', () => ({
+	useTranslation: () => ({ t: (key: string) => key }),
+}));
+
 const OPTIONS = [
 	{ id: '1', name: 'Beef' },
 	{ id: '2', name: 'Pork' },
@@ -15,10 +19,48 @@ describe('Combobox', () => {
 		expect((screen.getByLabelText('trigger') as HTMLInputElement).value).toBe('Pork');
 	});
 
-	it('caps the typed text at maxLength when one is given', () => {
-		render(<Combobox options={OPTIONS} value={null} onChange={vi.fn()} label="trigger" maxLength={200} />);
+	it('withholds the create entry and reports a typed name longer than maxNameLength', () => {
+		const onCreate = vi.fn();
+		render(
+			<Combobox
+				options={OPTIONS}
+				value={null}
+				onChange={vi.fn()}
+				label="trigger"
+				onCreate={onCreate}
+				createLabel={(name) => `Add ${name}`}
+				maxNameLength={10}
+			/>,
+		);
 
-		expect((screen.getByLabelText('trigger') as HTMLInputElement).maxLength).toBe(200);
+		const input = screen.getByLabelText('trigger');
+		fireEvent.focus(input);
+		fireEvent.change(input, { target: { value: 'n'.repeat(11) } });
+
+		expect(screen.queryByText(`Add ${'n'.repeat(11)}`)).toBeNull();
+		expect(screen.getByText('validation.tooLong')).not.toBeNull();
+		expect(input.className).toContain('border-error');
+	});
+
+	it('offers the create entry at exactly maxNameLength', () => {
+		render(
+			<Combobox
+				options={OPTIONS}
+				value={null}
+				onChange={vi.fn()}
+				label="trigger"
+				onCreate={vi.fn()}
+				createLabel={(name) => `Add ${name}`}
+				maxNameLength={10}
+			/>,
+		);
+
+		const input = screen.getByLabelText('trigger');
+		fireEvent.focus(input);
+		fireEvent.change(input, { target: { value: 'n'.repeat(10) } });
+
+		expect(screen.getByText(`Add ${'n'.repeat(10)}`)).not.toBeNull();
+		expect(screen.queryByText('validation.tooLong')).toBeNull();
 	});
 
 	it('filters options by the typed query and reports the chosen id', () => {

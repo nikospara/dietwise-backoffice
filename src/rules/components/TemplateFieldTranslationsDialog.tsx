@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MAX_LENGTHS } from '@/api/fieldLimits';
+import { isTooLong, MAX_LENGTHS } from '@/api/fieldLimits';
 import { type Language, LANGUAGES, type VersionedText } from '@/components/referenceData';
+import { TooLongError } from '@/components/TooLongError';
 import { type TemplateField } from '@/rules/rules';
 
 interface TemplateFieldTranslationsDialogProps {
@@ -88,6 +89,7 @@ export function TemplateFieldTranslationsDialog({
 						const staged = current !== undefined && current.version > 0;
 						const value = drafts[lang];
 						const changed = current !== undefined && value !== (current.text ?? '');
+						const overLimit = isTooLong(value, MAX_LENGTHS.templateField[field]);
 						return (
 							<div key={lang} className="mt-3">
 								<div className="flex items-center justify-between">
@@ -103,19 +105,19 @@ export function TemplateFieldTranslationsDialog({
 									) : null}
 								</div>
 								<textarea
-									className="textarea-bordered textarea w-full"
+									className={`textarea-bordered textarea w-full ${overLimit ? 'border-error' : ''}`}
 									aria-label={lang}
-									maxLength={MAX_LENGTHS.templateField[field]}
 									placeholder={englishValue ?? title}
 									value={value}
 									disabled={current === undefined}
 									onChange={(event) => setDrafts((prev) => ({ ...prev, [lang]: event.target.value }))}
 								/>
+								<TooLongError value={value} max={MAX_LENGTHS.templateField[field]} />
 								<div className="mt-1 text-right">
 									<button
 										type="button"
 										className="btn btn-primary btn-xs"
-										disabled={!changed}
+										disabled={!changed || overLimit}
 										onClick={() =>
 											reconcile(lang, () =>
 												onStage(

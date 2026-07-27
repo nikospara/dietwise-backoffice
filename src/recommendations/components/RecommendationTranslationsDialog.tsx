@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MAX_LENGTHS } from '@/api/fieldLimits';
+import { isTooLong, MAX_LENGTHS } from '@/api/fieldLimits';
+import { TooLongError } from '@/components/TooLongError';
 import { type Language, LANGUAGES, type RecommendationTranslationDetails } from '@/recommendations/recommendations';
 
 interface RecommendationTranslationsDialogProps {
@@ -129,6 +130,11 @@ export function RecommendationTranslationsDialog({
 								draft.component !== (current.componentForScoring ?? '') ||
 								draft.explanation !== (current.explanationForLlm ?? '') ||
 								draft.humanFriendlyDisplay !== (current.humanFriendlyDisplay ?? ''));
+						const overLimit =
+							isTooLong(draft.name, MAX_LENGTHS.recommendationName) ||
+							isTooLong(draft.component, MAX_LENGTHS.recommendationComponentForScoring) ||
+							isTooLong(draft.explanation, MAX_LENGTHS.recommendationExplanation) ||
+							isTooLong(draft.humanFriendlyDisplay, MAX_LENGTHS.recommendationHumanFriendlyDisplay);
 						return (
 							<div key={lang} className="mt-3">
 								<div className="flex items-center justify-between">
@@ -145,9 +151,8 @@ export function RecommendationTranslationsDialog({
 								</div>
 								<input
 									type="text"
-									className="input-bordered input w-full input-sm"
+									className={`input-bordered input w-full input-sm ${isTooLong(draft.name, MAX_LENGTHS.recommendationName) ? 'border-error' : ''}`}
 									aria-label={`${lang} ${t('recommendations.columnName')}`}
-									maxLength={MAX_LENGTHS.recommendationName}
 									placeholder={englishName}
 									value={draft.name}
 									disabled={current === undefined}
@@ -158,11 +163,11 @@ export function RecommendationTranslationsDialog({
 										}))
 									}
 								/>
+								<TooLongError value={draft.name} max={MAX_LENGTHS.recommendationName} />
 								<input
 									type="text"
-									className="input-bordered input mt-1 w-full input-sm"
+									className={`input-bordered input mt-1 w-full input-sm ${isTooLong(draft.component, MAX_LENGTHS.recommendationComponentForScoring) ? 'border-error' : ''}`}
 									aria-label={`${lang} ${t('recommendations.columnComponent')}`}
-									maxLength={MAX_LENGTHS.recommendationComponentForScoring}
 									placeholder={englishComponent}
 									value={draft.component}
 									disabled={current === undefined}
@@ -173,10 +178,13 @@ export function RecommendationTranslationsDialog({
 										}))
 									}
 								/>
+								<TooLongError
+									value={draft.component}
+									max={MAX_LENGTHS.recommendationComponentForScoring}
+								/>
 								<textarea
-									className="textarea-bordered textarea mt-1 w-full"
+									className={`textarea-bordered textarea mt-1 w-full ${isTooLong(draft.explanation, MAX_LENGTHS.recommendationExplanation) ? 'border-error' : ''}`}
 									aria-label={`${lang} ${t('recommendations.columnExplanation')}`}
-									maxLength={MAX_LENGTHS.recommendationExplanation}
 									placeholder={englishExplanation ?? t('recommendations.columnExplanation')}
 									value={draft.explanation}
 									disabled={current === undefined}
@@ -187,10 +195,10 @@ export function RecommendationTranslationsDialog({
 										}))
 									}
 								/>
+								<TooLongError value={draft.explanation} max={MAX_LENGTHS.recommendationExplanation} />
 								<textarea
-									className="textarea-bordered textarea mt-1 w-full"
+									className={`textarea-bordered textarea mt-1 w-full ${isTooLong(draft.humanFriendlyDisplay, MAX_LENGTHS.recommendationHumanFriendlyDisplay) ? 'border-error' : ''}`}
 									aria-label={`${lang} ${t('recommendations.columnHumanFriendlyDisplay')}`}
-									maxLength={MAX_LENGTHS.recommendationHumanFriendlyDisplay}
 									placeholder={
 										englishHumanFriendlyDisplay ?? t('recommendations.columnHumanFriendlyDisplay')
 									}
@@ -203,11 +211,15 @@ export function RecommendationTranslationsDialog({
 										}))
 									}
 								/>
+								<TooLongError
+									value={draft.humanFriendlyDisplay}
+									max={MAX_LENGTHS.recommendationHumanFriendlyDisplay}
+								/>
 								<div className="mt-1 text-right">
 									<button
 										type="button"
 										className="btn btn-primary btn-xs"
-										disabled={!changed}
+										disabled={!changed || overLimit}
 										onClick={() =>
 											reconcile(lang, () =>
 												onStage(

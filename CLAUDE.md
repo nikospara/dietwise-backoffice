@@ -32,13 +32,13 @@ Tailwind 4 is configured **CSS-first**: `src/index.css` holds `@import 'tailwind
 
 ```
 src/
-  components/        ONLY truly generic, reusable components (Combobox, TranslationChips)
+  components/        ONLY truly generic, reusable components (Combobox, TranslationChips, TooLongError)
   <feature>/         rules/ and recommendations/
     <Feature>Page.tsx
     <feature>.ts     data layer: the feature's types + fetch/stage/revert functions
     components/       components specific to this feature (e.g. its dialogs)
   api/client.ts      apiFetch + ApiError
-  api/fieldLimits.ts MAX_LENGTHS — the backend's per-field VARCHAR sizes
+  api/fieldLimits.ts MAX_LENGTHS + isTooLong — the backend's per-field VARCHAR sizes
   auth/              OIDC user manager, role guards
   config/            runtime AppConfig (loaded at startup) + fallback
   i18n/              en.json (only locale) + setup
@@ -55,7 +55,7 @@ Each feature's `<feature>.ts` wraps `apiFetch` from `@/api/client`. `apiFetch` a
 
 Edits do not mutate published master data — they **stage** into a Working Copy under **optimistic versioning**: every mutation sends a `baseVersion`, and a stale base returns **HTTP 409**. The standard UI response to a 409 is "show a stale-reload warning and reload", never a silent retry (see `commit`/`reload` in the pages). An edit that collapses back to the master value returns version 0 (no staged change).
 
-Text longer than its column fails in the database as an opaque HTTP error, so every editor caps its input with `maxLength` from `MAX_LENGTHS` in `api/fieldLimits.ts`. Those numbers mirror the Liquibase changelogs in `../dietwise` — a new editable field needs an entry there, and a widened column needs the entry updated.
+Text longer than its column fails in the database as an opaque HTTP error. Inputs are **not** capped with `maxLength` — silent truncation loses text without the user noticing. Instead every editor measures its draft against `MAX_LENGTHS` in `api/fieldLimits.ts`: it gives the field a `border-error`, renders `<TooLongError>` under it, and refuses to send the value — by disabling the Save button in the dialogs, or by returning early from the `onBlur` commit in the inline grids (which leaves the draft in place to be shortened). In the grids, `border-error` and the pending-change `border-warning` are Tailwind utilities of equal weight, so class order in the attribute does **not** decide the winner: those inputs pick exactly one with a nested ternary, never both. `TooLongError` only explains the refusal — **the editor must do the refusing**, so a new field needs both halves. Those numbers mirror the Liquibase changelogs in `../dietwise`.
 
 **Known gap:** staged Working-Copy edits are currently inert at runtime — the assessment engine reads master only and there is no publish step yet. Treat the backoffice as staging-only until that lands. (Memory: `dietwise-backoffice-edits-inert-at-runtime`.)
 

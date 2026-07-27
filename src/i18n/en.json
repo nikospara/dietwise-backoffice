@@ -16,6 +16,9 @@
 		"missingRole": "Your account does not have the 'backoffice' role. Some actions may be denied by the server.",
 		"forbidden": "You do not have permission to view this page. The 'backoffice' role is required."
 	},
+	"validation": {
+		"tooLong": "Too long to save: {{length}} characters, {{max}} allowed."
+	},
 	"reference": {
 		"editName": "Name",
 		"editExplanation": "Explanation for the LLM",

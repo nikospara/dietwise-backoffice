@@ -138,13 +138,17 @@ describe('SubstitutionValuePage', () => {
 		await waitFor(() => expect(input.value).toBe(''));
 	});
 
-	it('caps the new ingredient name at the length the backend accepts', async () => {
+	it('blocks adding and reports a new ingredient name longer than the backend accepts', async () => {
 		render(<SubstitutionValuePage />);
 		await screen.findByText('legumes');
 
-		expect((screen.getByLabelText('substitutionValue.addLabel') as HTMLInputElement).maxLength).toBe(
-			MAX_LENGTHS.referenceName,
-		);
+		const input = screen.getByLabelText('substitutionValue.addLabel') as HTMLInputElement;
+		fireEvent.change(input, { target: { value: 'n'.repeat(MAX_LENGTHS.referenceName + 1) } });
+
+		expect(screen.getByText('validation.tooLong')).not.toBeNull();
+		expect((screen.getByText('substitutionValue.add') as HTMLButtonElement).disabled).toBe(true);
+		expect(createAlternativeIngredientMock).not.toHaveBeenCalled();
+		expect(input.className).toContain('border-error');
 	});
 
 	it('warns when the new name duplicates an existing one', async () => {

@@ -51,15 +51,20 @@ describe('TemplateFieldTranslationsDialog', () => {
 		expect(((await screen.findByLabelText('LT')) as HTMLTextAreaElement).placeholder).toBe('No binder needed.');
 	});
 
-	it('caps every language at the length the edited field accepts', async () => {
+	it('measures each language against the limit of the edited field', async () => {
 		renderDialog({ field: 'TECHNIQUE_NOTES' });
 
-		await screen.findByLabelText('EL');
-		for (const lang of ['EL', 'LT', 'NL']) {
-			expect((screen.getByLabelText(lang) as HTMLTextAreaElement).maxLength).toBe(
-				MAX_LENGTHS.templateField.TECHNIQUE_NOTES,
-			);
-		}
+		const el = (await screen.findByLabelText('EL')) as HTMLTextAreaElement;
+		// Over the 300 a RESTRICTION allows, but well inside what TECHNIQUE_NOTES holds.
+		fireEvent.change(el, { target: { value: 'n'.repeat(MAX_LENGTHS.templateField.RESTRICTION + 1) } });
+		expect(screen.queryByText('validation.tooLong')).toBeNull();
+		expect(el.className).not.toContain('border-error');
+
+		fireEvent.change(el, { target: { value: 'n'.repeat(MAX_LENGTHS.templateField.TECHNIQUE_NOTES + 1) } });
+
+		expect(screen.getAllByText('validation.tooLong')).toHaveLength(1);
+		expect((screen.getAllByText('rules.translationSave')[0] as HTMLButtonElement).disabled).toBe(true);
+		expect(el.className).toContain('border-error');
 	});
 
 	it('falls back to the field title as placeholder when there is no English source', async () => {

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MAX_LENGTHS } from '@/api/fieldLimits';
+import { isTooLong, MAX_LENGTHS } from '@/api/fieldLimits';
 import { type ReferenceDetails } from '@/components/referenceData';
+import { TooLongError } from '@/components/TooLongError';
 
 interface ReferenceEditDialogProps {
 	referenceId: string;
@@ -62,7 +63,9 @@ export function ReferenceEditDialog({
 
 	const trimmedName = name.trim();
 	const isDuplicate = takenNames.includes(trimmedName.toLowerCase());
-	const canSave = details !== null && trimmedName !== '' && !isDuplicate && !saving;
+	const overLimit =
+		isTooLong(name, MAX_LENGTHS.referenceName) || isTooLong(explanation, MAX_LENGTHS.referenceExplanation);
+	const canSave = details !== null && trimmedName !== '' && !isDuplicate && !overLimit && !saving;
 
 	const submit = () => {
 		if (details === null || !canSave) {
@@ -85,22 +88,22 @@ export function ReferenceEditDialog({
 							<span className="label-text">{t('reference.editName')}</span>
 							<input
 								type="text"
-								className="input-bordered input w-full input-sm"
+								className={`input-bordered input w-full input-sm ${isTooLong(name, MAX_LENGTHS.referenceName) ? 'border-error' : ''}`}
 								aria-label={t('reference.editName')}
-								maxLength={MAX_LENGTHS.referenceName}
 								value={name}
 								onChange={(event) => setName(event.target.value)}
 							/>
+							<TooLongError value={name} max={MAX_LENGTHS.referenceName} />
 						</label>
 						<label className="form-control mt-3 block">
 							<span className="label-text">{t('reference.editExplanation')}</span>
 							<textarea
-								className="textarea-bordered textarea w-full"
+								className={`textarea-bordered textarea w-full ${isTooLong(explanation, MAX_LENGTHS.referenceExplanation) ? 'border-error' : ''}`}
 								aria-label={t('reference.editExplanation')}
-								maxLength={MAX_LENGTHS.referenceExplanation}
 								value={explanation}
 								onChange={(event) => setExplanation(event.target.value)}
 							/>
+							<TooLongError value={explanation} max={MAX_LENGTHS.referenceExplanation} />
 						</label>
 						{isDuplicate ? (
 							<p className="mt-2 text-sm text-error">{t('reference.editDuplicateName')}</p>

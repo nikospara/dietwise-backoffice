@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { isTooLong } from '@/api/fieldLimits';
+import { TooLongError } from '@/components/TooLongError';
 
 export interface ComboboxOption {
 	id: string;
@@ -17,8 +19,8 @@ interface ComboboxProps {
 	onCreate?: (name: string) => void;
 	/** Renders the label of the create entry for the typed name; required for the create entry to appear. */
 	createLabel?: (name: string) => string;
-	/** Caps the typed text, so a name typed to create a new entry cannot exceed what the backend stores. */
-	maxLength?: number;
+	/** The longest name that can be created; a longer typed name is reported and offers no create entry. */
+	maxNameLength?: number;
 }
 
 /**
@@ -36,17 +38,20 @@ export function Combobox({
 	clearLabel,
 	onCreate,
 	createLabel,
-	maxLength,
+	maxNameLength,
 }: ComboboxProps) {
 	const [query, setQuery] = useState('');
 	const [open, setOpen] = useState(false);
 	const selected = options.find((option) => option.id === value) ?? null;
 	const filtered = options.filter((option) => option.name.toLowerCase().includes(query.toLowerCase()));
 	const trimmedQuery = query.trim();
+	// The limit the typed name breaches, or null while it fits — carrying the number keeps it in hand for the message.
+	const breachedLimit = maxNameLength !== undefined && isTooLong(trimmedQuery, maxNameLength) ? maxNameLength : null;
 	const canCreate =
 		onCreate !== undefined &&
 		createLabel !== undefined &&
 		trimmedQuery !== '' &&
+		breachedLimit === null &&
 		!options.some((option) => option.name.toLowerCase() === trimmedQuery.toLowerCase());
 
 	const select = (id: string | null) => {
@@ -65,9 +70,8 @@ export function Combobox({
 		<div className="relative">
 			<input
 				type="text"
-				className="input-bordered input w-full input-sm"
+				className={`input-bordered input w-full input-sm ${breachedLimit !== null ? 'border-error' : ''}`}
 				aria-label={label}
-				maxLength={maxLength}
 				placeholder={placeholder}
 				value={open ? query : (selected?.name ?? '')}
 				onFocus={() => {
@@ -98,6 +102,11 @@ export function Combobox({
 							<button type="button" className="font-medium" onMouseDown={() => create(trimmedQuery)}>
 								{createLabel?.(trimmedQuery)}
 							</button>
+						</li>
+					) : null}
+					{breachedLimit !== null ? (
+						<li className="px-3 py-1">
+							<TooLongError value={trimmedQuery} max={breachedLimit} />
 						</li>
 					) : null}
 				</ul>

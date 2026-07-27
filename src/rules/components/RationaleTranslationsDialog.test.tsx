@@ -48,13 +48,19 @@ describe('RationaleTranslationsDialog', () => {
 		expect(((await screen.findByLabelText('LT')) as HTMLTextAreaElement).placeholder).toBe('English rationale.');
 	});
 
-	it('caps every language at the length the backend accepts', async () => {
+	it('blocks only the offending language when its rationale is longer than the backend accepts', async () => {
 		renderDialog();
 
-		await screen.findByLabelText('EL');
-		for (const lang of ['EL', 'LT', 'NL']) {
-			expect((screen.getByLabelText(lang) as HTMLTextAreaElement).maxLength).toBe(MAX_LENGTHS.ruleRationale);
-		}
+		const el = (await screen.findByLabelText('EL')) as HTMLTextAreaElement;
+		fireEvent.change(el, { target: { value: 'r'.repeat(MAX_LENGTHS.ruleRationale + 1) } });
+		fireEvent.change(screen.getByLabelText('NL'), { target: { value: 'Nederlands herzien' } });
+
+		expect(screen.getAllByText('validation.tooLong')).toHaveLength(1);
+		const saves = screen.getAllByText('rules.translationSave') as HTMLButtonElement[];
+		expect(saves[0].disabled).toBe(true);
+		expect(saves[2].disabled).toBe(false);
+		expect(el.className).toContain('border-error');
+		expect((screen.getByLabelText('NL') as HTMLTextAreaElement).className).not.toContain('border-error');
 	});
 
 	it('falls back to the field name as placeholder when there is no English source', async () => {

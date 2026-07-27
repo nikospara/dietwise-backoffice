@@ -68,25 +68,31 @@ describe('RecommendationTranslationsDialog', () => {
 		expect(screen.getByText('red meat')).not.toBeNull();
 	});
 
-	it('caps every language field at the length the backend accepts', async () => {
+	it('blocks only the offending language when one of its fields is longer than the backend accepts', async () => {
 		renderDialog();
 
-		await screen.findByLabelText('EL recommendations.columnName');
-		for (const lang of ['EL', 'LT', 'NL']) {
-			expect((screen.getByLabelText(`${lang} recommendations.columnName`) as HTMLInputElement).maxLength).toBe(
-				MAX_LENGTHS.recommendationName,
-			);
-			expect(
-				(screen.getByLabelText(`${lang} recommendations.columnComponent`) as HTMLInputElement).maxLength,
-			).toBe(MAX_LENGTHS.recommendationComponentForScoring);
-			expect(
-				(screen.getByLabelText(`${lang} recommendations.columnExplanation`) as HTMLTextAreaElement).maxLength,
-			).toBe(MAX_LENGTHS.recommendationExplanation);
-			expect(
-				(screen.getByLabelText(`${lang} recommendations.columnHumanFriendlyDisplay`) as HTMLTextAreaElement)
-					.maxLength,
-			).toBe(MAX_LENGTHS.recommendationHumanFriendlyDisplay);
-		}
+		const elName = (await screen.findByLabelText('EL recommendations.columnName')) as HTMLInputElement;
+		fireEvent.change(elName, { target: { value: 'n'.repeat(MAX_LENGTHS.recommendationName + 1) } });
+
+		expect(screen.getAllByText('validation.tooLong')).toHaveLength(1);
+		const saves = screen.getAllByText('recommendations.translationSave') as HTMLButtonElement[];
+		expect(saves[0].disabled).toBe(true);
+		expect(elName.className).toContain('border-error');
+		expect(
+			(screen.getByLabelText('EL recommendations.columnComponent') as HTMLInputElement).className,
+		).not.toContain('border-error');
+	});
+
+	it('reports each over-long field of a language separately', async () => {
+		renderDialog();
+
+		const elName = (await screen.findByLabelText('EL recommendations.columnName')) as HTMLInputElement;
+		fireEvent.change(elName, { target: { value: 'n'.repeat(MAX_LENGTHS.recommendationName + 1) } });
+		fireEvent.change(screen.getByLabelText('EL recommendations.columnExplanation'), {
+			target: { value: 'e'.repeat(MAX_LENGTHS.recommendationExplanation + 1) },
+		});
+
+		expect(screen.getAllByText('validation.tooLong')).toHaveLength(2);
 	});
 
 	it('shows the English source as placeholder so an empty field reads as falling back to English', async () => {

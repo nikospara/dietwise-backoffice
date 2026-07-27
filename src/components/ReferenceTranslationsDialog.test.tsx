@@ -46,18 +46,27 @@ describe('ReferenceTranslationsDialog', () => {
 		expect(screen.getByText('Beef', { exact: false })).not.toBeNull();
 	});
 
-	it('caps every language name and explanation at the lengths the backend accepts', async () => {
+	it('blocks only the offending language when its explanation is longer than the backend accepts', async () => {
 		renderDialog();
 
-		await screen.findByLabelText('EL reference.editName');
-		for (const lang of ['EL', 'LT', 'NL']) {
-			expect((screen.getByLabelText(`${lang} reference.editName`) as HTMLInputElement).maxLength).toBe(
-				MAX_LENGTHS.referenceName,
-			);
-			expect((screen.getByLabelText(`${lang} reference.editExplanation`) as HTMLTextAreaElement).maxLength).toBe(
-				MAX_LENGTHS.referenceExplanation,
-			);
-		}
+		const elExplanation = (await screen.findByLabelText('EL reference.editExplanation')) as HTMLTextAreaElement;
+		fireEvent.change(elExplanation, {
+			target: { value: 'e'.repeat(MAX_LENGTHS.referenceExplanation + 1) },
+		});
+		fireEvent.change(screen.getByLabelText('NL reference.editName'), { target: { value: 'Rundvlees herzien' } });
+
+		expect(screen.getAllByText('validation.tooLong')).toHaveLength(1);
+		const saves = screen.getAllByText('reference.translationSave') as HTMLButtonElement[];
+		expect(saves[0].disabled).toBe(true);
+		expect(saves[2].disabled).toBe(false);
+		expect(elExplanation.className).toContain('border-error');
+		// The other field of the same language, and the other languages, stay unmarked.
+		expect((screen.getByLabelText('EL reference.editName') as HTMLInputElement).className).not.toContain(
+			'border-error',
+		);
+		expect((screen.getByLabelText('NL reference.editExplanation') as HTMLTextAreaElement).className).not.toContain(
+			'border-error',
+		);
 	});
 
 	it('shows the English name as placeholder and the field name for the explanation', async () => {

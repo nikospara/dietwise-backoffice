@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FiTrash2, FiX } from 'react-icons/fi';
 import { ApiError } from '@/api/client';
-import { MAX_LENGTHS } from '@/api/fieldLimits';
+import { isTooLong, MAX_LENGTHS } from '@/api/fieldLimits';
 import { type Language, LANGUAGES } from '@/components/referenceData';
+import { TooLongError } from '@/components/TooLongError';
 import { ReferenceEditDialog } from '@/components/ReferenceEditDialog';
 import { ReferenceTranslationsDialog } from '@/components/ReferenceTranslationsDialog';
 import { TranslationChips } from '@/components/TranslationChips';
@@ -273,9 +274,8 @@ export function SubstitutionValuePage() {
 			<div className="mt-4 flex flex-wrap items-center gap-2">
 				<input
 					type="text"
-					className="input-bordered input input-sm"
+					className={`input-bordered input input-sm ${isTooLong(newName, MAX_LENGTHS.referenceName) ? 'border-error' : ''}`}
 					aria-label={t('substitutionValue.addLabel')}
-					maxLength={MAX_LENGTHS.referenceName}
 					placeholder={t('substitutionValue.addPlaceholder')}
 					value={newName}
 					onChange={(event) => {
@@ -286,11 +286,12 @@ export function SubstitutionValuePage() {
 				<button
 					type="button"
 					className="btn btn-primary btn-sm"
-					disabled={newName.trim() === '' || creating}
+					disabled={newName.trim() === '' || isTooLong(newName, MAX_LENGTHS.referenceName) || creating}
 					onClick={onCreate}
 				>
 					{t('substitutionValue.add')}
 				</button>
+				<TooLongError value={newName} max={MAX_LENGTHS.referenceName} />
 				{duplicateName ? (
 					<span className="text-sm text-error">{t('substitutionValue.duplicateName')}</span>
 				) : null}
