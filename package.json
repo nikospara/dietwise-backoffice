@@ -1,6 +1,6 @@
 {
   "name": "dietwise-backoffice",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "overrides": {
     "unrs-resolver": "1.11.1"
