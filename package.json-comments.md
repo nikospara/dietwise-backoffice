@@ -33,13 +33,22 @@ Format is the following - update the date every time you re-assess:
 >
 > Reasoning...
 
-### typescript - 25/07/2026 - 6.0.3 - 7.0.2
+### typescript - 17/09/2026 - 6.0.3 - 7.0.2
 
-TypeScript 7.0 is the native (Go) compiler and **ships no programmatic API at all** — that returns in 7.1.
-typescript-eslint refuses to load against it outright (`typescript-eslint does not support TS 7.0`), which takes
-the whole lint step down, type-aware rules and all. It is not a version-range quibble that an override could
-paper over: no released or prerelease typescript-eslint supports TS 7, and the maintainers put it 1-2 major
-releases away ([typescript-eslint#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)).
+TypeScript 7.0 is the native (Go) compiler and **ships no programmatic API at all** — `require('typescript')`
+yields only `{ version, versionMajorMinor }`. The API returns in 7.1
+([microsoft/TypeScript#63875](https://github.com/microsoft/TypeScript/issues/63875), milestone
+"TypeScript 7.1.0 Beta", no due date).
+
+typescript-eslint refuses to load against it outright: its entry point reads `ts.versionMajorMinor` and throws
+`typescript-eslint does not support TS 7.0.` before anything else runs. That takes the whole lint step down,
+type-aware rules and all — and because `vite.config.ts` runs `@nabla/vite-plugin-eslint`, it takes
+`npm run build` and `npm run dev` with it, not just `npm run lint`. It is not a version-range quibble that an
+override could paper over: no released or prerelease typescript-eslint supports TS 7
+([typescript-eslint#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)). A prototype
+built on the 7.1 native parser API is in draft
+([typescript-eslint#12803](https://github.com/typescript-eslint/typescript-eslint/pull/12803)); the maintainers
+have published no ETA beyond "I don't know how long it will take".
 
 TS 7 *can* be run today alongside a TS 6 API package, per Microsoft's documented side-by-side layout
 (`"@typescript/native": "npm:typescript@7.0.2"` for the `tsc` binary plus
@@ -47,7 +56,7 @@ TS 7 *can* be run today alongside a TS 6 API package, per Microsoft's documented
 on the sibling `howibuy-front`, which runs the same toolchain: it works — lint stays green, both compilers flag
 the same errors, and `tsc` gets ~3.4x faster.
 
-It was rejected anyway. Half a second on a project this size does not pay for two compilers in the tree, two
+It was rejected anyway. Under a second on projects this size does not pay for two compilers in the tree, two
 sets of type semantics (lint checking with TS 6 while the build checks with TS 7), a `tsc`/`tsc6` split that
 every contributor has to learn, and an IDE caveat — the TS 6 API package has no `lib/tsserver.js`, so editors
 told to use the workspace TypeScript find no language service.
