@@ -69,7 +69,7 @@ export function RationaleTranslationsDialog({
 	};
 
 	return (
-		<div className="modal-open modal" role="dialog" aria-label={t('rules.translationsTitle')}>
+		<div className="modal modal-open" role="dialog" aria-label={t('rules.translationsTitle')}>
 			<div className="modal-box">
 				<h3 className="text-lg font-semibold">{t('rules.translationsTitle')}</h3>
 				<p className="mt-2 text-sm text-base-content/70">

@@ -97,7 +97,7 @@ export function RecommendationTranslationsDialog({
 	};
 
 	return (
-		<div className="modal-open modal" role="dialog" aria-label={t('recommendations.translationsTitle')}>
+		<div className="modal modal-open" role="dialog" aria-label={t('recommendations.translationsTitle')}>
 			<div className="modal-box">
 				<h3 className="text-lg font-semibold">{t('recommendations.translationsTitle')}</h3>
 				<div className="mt-2 space-y-1 text-sm text-base-content/70">

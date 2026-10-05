@@ -188,7 +188,7 @@ export function SubstitutionValuePage() {
 				</div>
 			) : null}
 			<div className="min-h-0 flex-1 overflow-auto">
-				<table className="table-pin-rows table">
+				<table className="table table-pin-rows">
 					<thead>
 						<tr>
 							<th className="sticky left-0 z-20 bg-base-100 px-1 py-4">

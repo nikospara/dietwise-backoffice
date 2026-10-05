@@ -14,7 +14,9 @@ export default defineConfig(({ mode }) => {
 
 	return {
 		base: basePath,
-		plugins: [react(), tailwindcss(), eslintPlugin()],
+		// The ESLint plugin leaves behind a worker thread that keeps the process alive, so it is
+		// left out of test runs; `npm run lint` lints the whole project anyway.
+		plugins: [react(), tailwindcss(), ...(mode === 'test' ? [] : [eslintPlugin()])],
 		resolve: {
 			alias: {
 				'@': path.resolve(import.meta.dirname, './src'),

@@ -164,7 +164,7 @@ export function RecommendationsPage() {
 				</div>
 			) : null}
 			<div className="min-h-0 flex-1 overflow-auto">
-				<table className="table-pin-rows table min-w-[880px]">
+				<table className="table table-pin-rows min-w-[880px]">
 					<thead>
 						<tr>
 							<th className="w-8 px-1 py-4 text-center">

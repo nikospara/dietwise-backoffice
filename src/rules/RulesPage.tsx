@@ -911,7 +911,7 @@ export function RulesPage() {
 				{isDuplicate ? <span className="text-sm text-error">{t('rules.duplicateRule')}</span> : null}
 			</div>
 			<div className="min-h-0 flex-1 overflow-auto">
-				<table className="table-pin-rows table min-w-[915px]">
+				<table className="table table-pin-rows min-w-[915px]">
 					<thead>
 						<tr>
 							<th className="w-8 px-0 py-4">

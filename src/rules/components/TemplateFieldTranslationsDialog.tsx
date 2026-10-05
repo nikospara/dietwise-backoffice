@@ -75,7 +75,7 @@ export function TemplateFieldTranslationsDialog({
 	};
 
 	return (
-		<div className="modal-open modal" role="dialog" aria-label={title}>
+		<div className="modal modal-open" role="dialog" aria-label={title}>
 			<div className="modal-box">
 				<h3 className="text-lg font-semibold">{title}</h3>
 				<p className="mt-2 text-sm text-base-content/70">
