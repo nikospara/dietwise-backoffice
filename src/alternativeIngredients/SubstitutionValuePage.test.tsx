@@ -42,8 +42,9 @@ const fetchAlternativeIngredientMock = vi.mocked(fetchAlternativeIngredient);
 // Tofu: Working-Copy-only, a staged addition to whole grains (a green pending-add cell), discardable.
 const gridFixture = (): RecommendationGrid => ({
 	columns: [
-		{ id: 'rec-legumes', componentForScoring: 'legumes' },
-		{ id: 'rec-grains', componentForScoring: 'whole grains' },
+		{ id: 'rec-legumes', componentForScoring: 'legumes', weight: 'ENCOURAGED' },
+		{ id: 'rec-processed-meat', componentForScoring: 'processed meat', weight: 'LIMITED' },
+		{ id: 'rec-grains', componentForScoring: 'whole grains', weight: 'ENCOURAGED' },
 	],
 	ingredients: [
 		{
@@ -77,11 +78,11 @@ describe('SubstitutionValuePage', () => {
 		fetchRecommendationGridMock.mockResolvedValue(gridFixture());
 	});
 
-	it('renders the encouraged columns and a cell per ingredient reflecting its effective and pending state', async () => {
+	it('renders a column per recommendation and a cell per ingredient reflecting its effective and pending state', async () => {
 		render(<SubstitutionValuePage />);
 
-		expect(await screen.findByText('legumes')).not.toBeNull();
-		expect(screen.getByText('whole grains')).not.toBeNull();
+		expect(await screen.findByText('+ legumes')).not.toBeNull();
+		expect(screen.getByText('+ whole grains')).not.toBeNull();
 
 		const lentilsLegumes = screen.getByLabelText('substitutionValue.toggleCell Lentils / legumes');
 		expect(lentilsLegumes.getAttribute('aria-pressed')).toBe('true');
@@ -96,9 +97,18 @@ describe('SubstitutionValuePage', () => {
 		expect(screen.getByText('substitutionValue.newBadge')).not.toBeNull();
 	});
 
+	it('marks the encouraged column headers with a plus and the limited ones with a minus', async () => {
+		render(<SubstitutionValuePage />);
+
+		const legumes = await screen.findByText('+ legumes');
+		expect(legumes.getAttribute('title')).toBe('legumes: ENCOURAGED');
+		const processedMeat = screen.getByText('- processed meat');
+		expect(processedMeat.getAttribute('title')).toBe('processed meat: LIMITED');
+	});
+
 	it('offers a discard action only for a Working-Copy-only ingredient', async () => {
 		render(<SubstitutionValuePage />);
-		await screen.findByText('legumes');
+		await screen.findByText('+ legumes');
 
 		expect(screen.getByLabelText('substitutionValue.discardIngredient Tofu')).not.toBeNull();
 		expect(screen.queryByLabelText('substitutionValue.discardIngredient Lentils')).toBeNull();
@@ -107,7 +117,7 @@ describe('SubstitutionValuePage', () => {
 	it('toggles an absent cell on and reloads', async () => {
 		toggleRecommendationMock.mockResolvedValue(undefined);
 		render(<SubstitutionValuePage />);
-		await screen.findByText('legumes');
+		await screen.findByText('+ legumes');
 
 		fireEvent.click(screen.getByLabelText('substitutionValue.toggleCell Lentils / whole grains'));
 
@@ -118,7 +128,7 @@ describe('SubstitutionValuePage', () => {
 	it('toggles a present cell off', async () => {
 		toggleRecommendationMock.mockResolvedValue(undefined);
 		render(<SubstitutionValuePage />);
-		await screen.findByText('legumes');
+		await screen.findByText('+ legumes');
 
 		fireEvent.click(screen.getByLabelText('substitutionValue.toggleCell Lentils / legumes'));
 
@@ -128,7 +138,7 @@ describe('SubstitutionValuePage', () => {
 	it('stages a new alternative ingredient and clears the input', async () => {
 		createAlternativeIngredientMock.mockResolvedValue({ id: 'ai-quinoa', name: 'Quinoa' });
 		render(<SubstitutionValuePage />);
-		await screen.findByText('legumes');
+		await screen.findByText('+ legumes');
 
 		const input = screen.getByLabelText('substitutionValue.addLabel') as HTMLInputElement;
 		fireEvent.change(input, { target: { value: 'Quinoa' } });
@@ -140,7 +150,7 @@ describe('SubstitutionValuePage', () => {
 
 	it('blocks adding and reports a new ingredient name longer than the backend accepts', async () => {
 		render(<SubstitutionValuePage />);
-		await screen.findByText('legumes');
+		await screen.findByText('+ legumes');
 
 		const input = screen.getByLabelText('substitutionValue.addLabel') as HTMLInputElement;
 		fireEvent.change(input, { target: { value: 'n'.repeat(MAX_LENGTHS.referenceName + 1) } });
@@ -154,7 +164,7 @@ describe('SubstitutionValuePage', () => {
 	it('warns when the new name duplicates an existing one', async () => {
 		createAlternativeIngredientMock.mockRejectedValue(new ApiError(409, 'duplicate'));
 		render(<SubstitutionValuePage />);
-		await screen.findByText('legumes');
+		await screen.findByText('+ legumes');
 
 		fireEvent.change(screen.getByLabelText('substitutionValue.addLabel'), { target: { value: 'Lentils' } });
 		fireEvent.click(screen.getByText('substitutionValue.add'));
@@ -165,7 +175,7 @@ describe('SubstitutionValuePage', () => {
 	it('shows a notice when a discard is refused because the ingredient is still referenced', async () => {
 		discardAlternativeIngredientMock.mockRejectedValue(new ApiError(409, 'in use'));
 		render(<SubstitutionValuePage />);
-		await screen.findByText('legumes');
+		await screen.findByText('+ legumes');
 
 		fireEvent.click(screen.getByLabelText('substitutionValue.discardIngredient Tofu'));
 
@@ -181,7 +191,7 @@ describe('SubstitutionValuePage', () => {
 			referenceCount: 3,
 		});
 		render(<SubstitutionValuePage />);
-		await screen.findByText('legumes');
+		await screen.findByText('+ legumes');
 
 		fireEvent.click(screen.getByLabelText('substitutionValue.editAlternativeIngredient Lentils'));
 
@@ -193,7 +203,7 @@ describe('SubstitutionValuePage', () => {
 
 	it('opens the translations dialog from the chips', async () => {
 		render(<SubstitutionValuePage />);
-		await screen.findByText('legumes');
+		await screen.findByText('+ legumes');
 
 		fireEvent.click(screen.getByLabelText('substitutionValue.editTranslations Lentils'));
 

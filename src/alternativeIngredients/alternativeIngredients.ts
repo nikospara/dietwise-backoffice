@@ -5,6 +5,7 @@ import {
 	type ReferenceOption,
 	type TranslationState,
 } from '@/components/referenceData';
+import { type RecommendationWeight } from '@/recommendations/recommendations';
 
 /** The editable details of a shared AlternativeIngredient plus its blast radius — the number of Suggestion Templates,
  * across all Rules, that reference it and would see the edit. Structurally a {@link ReferenceDetails} so it can pre-fill
@@ -95,11 +96,13 @@ export function revertAlternativeIngredientTranslation(id: string, lang: Languag
 	});
 }
 
-/** One column of the substitution-value grid: an ENCOURAGED Recommendation an AlternativeIngredient can provide,
- * labelled in the header by its component for scoring. */
+/** One column of the substitution-value grid: a Recommendation whose component for scoring an AlternativeIngredient
+ * can carry, labelled in the header by that component. Carrying an ENCOURAGED component raises a recipe's score,
+ * carrying a LIMITED one lowers it. */
 export interface RecommendationColumn {
 	id: string;
 	componentForScoring: string;
+	weight: RecommendationWeight;
 }
 
 /** One AlternativeIngredient row of the substitution-value grid: its effective name, whether a published master row
@@ -118,13 +121,13 @@ export interface AlternativeIngredientRow {
 	stagedRecommendationIds: string[];
 }
 
-/** The whole substitution-value grid: the ENCOURAGED Recommendation columns and one row per AlternativeIngredient. */
+/** The whole substitution-value grid: the Recommendation columns and one row per AlternativeIngredient. */
 export interface RecommendationGrid {
 	columns: RecommendationColumn[];
 	ingredients: AlternativeIngredientRow[];
 }
 
-/** Fetches the substitution-value grid (master overlaid by the Working Copy): the ENCOURAGED Recommendation columns and
+/** Fetches the substitution-value grid (master overlaid by the Working Copy): the Recommendation columns and
  * the AlternativeIngredient rows with their links to those columns. */
 export function fetchRecommendationGrid(): Promise<RecommendationGrid> {
 	return apiFetch<RecommendationGrid>('/alternative-ingredients/recommendations');

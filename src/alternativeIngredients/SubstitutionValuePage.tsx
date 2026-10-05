@@ -11,6 +11,7 @@ import { TranslationChips } from '@/components/TranslationChips';
 import {
 	type AlternativeIngredientDetails,
 	type AlternativeIngredientRow,
+	type RecommendationColumn,
 	type RecommendationGrid,
 	createAlternativeIngredient,
 	discardAlternativeIngredient,
@@ -43,6 +44,11 @@ function cellClass({ pendingAdd, pendingRemove }: CellState): string {
 		return `${base} bg-error/20 text-error`;
 	}
 	return base;
+}
+
+// The sign tells apart the components that raise a recipe's score (+, ENCOURAGED) from those that lower it (-, LIMITED).
+function columnSign({ weight }: RecommendationColumn): string {
+	return weight === 'LIMITED' ? '-' : '+';
 }
 
 export function SubstitutionValuePage() {
@@ -196,8 +202,12 @@ export function SubstitutionValuePage() {
 							</th>
 							<th className="px-1 py-4">{t('substitutionValue.columnTranslations')}</th>
 							{grid.columns.map((column) => (
-								<th key={column.id} className="px-1 py-4 text-center align-bottom">
-									{column.componentForScoring}
+								<th
+									key={column.id}
+									className="px-1 py-4 text-center align-bottom"
+									title={`${column.componentForScoring}: ${column.weight}`}
+								>
+									{`${columnSign(column)} ${column.componentForScoring}`}
 								</th>
 							))}
 							<th className="px-1 py-4">
